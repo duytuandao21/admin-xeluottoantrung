@@ -1,9 +1,9 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { mockBodyStyles } from '@/lib/mock-data';
+import { mockConditions } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
 export default function Page() {
-  return <CrudPage title="Quản lý tình trạng xe" data={mockBodyStyles as unknown as Record<string, unknown>[]} columns={[
+  return <CrudPage title="Quản lý tình trạng xe" data={mockConditions as unknown as Record<string, unknown>[]} columns={[
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'name', label: 'Tình trạng', sortable: true, render: (item) => <span className="font-medium">{String(item.name)}</span> },
     { key: 'slug', label: 'Slug' },

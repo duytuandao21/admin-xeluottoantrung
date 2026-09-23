@@ -2,13 +2,15 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/lib/theme-context';
+import { useLocalStore } from '@/lib/local-store';
 import {
-  LayoutDashboard, Car, FolderTree, Mail, MailOpen, PhoneCall, UserPlus,
+  LayoutDashboard, Car, FolderTree, Mail, PhoneCall, UserPlus,
   Building2, Shapes, Calendar, Settings2, Briefcase, DollarSign, Wrench,
-  Info, Heart, HelpCircle, Newspaper, Users, Image, PanelLeft,
-  Palette, MapPin, Activity, Phone, Share2, Smartphone, CreditCard,
+  Info, Heart, HelpCircle, Newspaper, Users, Image,
+  Palette, Phone, Share2, Smartphone, CreditCard,
   FileText, ArrowLeftRight, Compass, ListChecks, ShoppingCart, HandCoins,
-  ImagePlus, Star, BookOpen, BarChart3, Search, ChevronDown, ChevronRight,
+  ImagePlus, Star, BookOpen, BarChart3, Search, ChevronDown,
+  Gauge, ClipboardCheck, ScanText, PanelBottom, BadgeCheck, UserCog, SlidersHorizontal, Factory, CarFront,
   type LucideIcon
 } from 'lucide-react';
 import { useState } from 'react';
@@ -21,67 +23,91 @@ interface MenuItem {
   children?: MenuItem[];
 }
 
-const menuItems: MenuItem[] = [
+export const menuItems: MenuItem[] = [
   { label: 'Tổng quan', href: '/', icon: LayoutDashboard },
+  { label: 'Thống kê', href: '/thong-ke', icon: BarChart3 },
   {
     label: 'Sản phẩm', icon: Car, children: [
       { label: 'Danh sách xe', href: '/san-pham', icon: Car },
-      { label: 'Danh mục cấp 1', href: '/danh-muc/cap-1', icon: FolderTree },
-      { label: 'Danh mục cấp 2', href: '/danh-muc/cap-2', icon: FolderTree },
+      { label: 'Hãng xe', href: '/danh-muc/cap-1', icon: Factory },
+      { label: 'Dòng xe', href: '/danh-muc/cap-2', icon: CarFront },
     ]
   },
   {
-    label: 'Hộp thư', icon: Mail, badge: 2961, children: [
-      { label: 'Thư bán xe', href: '/thu/ban-xe', icon: Mail, badge: 1895 },
-      { label: 'Thư lên đời xe', href: '/thu/len-doi-xe', icon: ArrowLeftRight, badge: 68 },
-      { label: 'Yêu cầu gọi lại', href: '/thu/yeu-cau-goi-lai', icon: PhoneCall, badge: 476 },
-      { label: 'Đăng ký nhận tin', href: '/thu/dang-ky-nhan-tin', icon: UserPlus, badge: 522 },
-    ]
-  },
-  {
-    label: 'Quản lý', icon: Settings2, children: [
-      { label: 'Chi nhánh', href: '/quan-ly/chi-nhanh', icon: Building2 },
+    label: 'Bộ lọc xe', icon: SlidersHorizontal, children: [
       { label: 'Kiểu dáng', href: '/quan-ly/kieu-dang', icon: Shapes },
-      { label: 'Năm sản xuất', href: '/quan-ly/nam-san-xuat', icon: Calendar },
-      { label: 'Hộp số', href: '/quan-ly/hop-so', icon: Settings2 },
       { label: 'Ngân sách', href: '/quan-ly/ngan-sach', icon: DollarSign },
-      { label: 'Dịch vụ', href: '/quan-ly/dich-vu', icon: Wrench },
+      { label: 'Năm sản xuất', href: '/quan-ly/nam-san-xuat', icon: Calendar },
+      { label: 'Gợi ý năm SX', href: '/thiet-lap/goi-y-nam-san-xuat', icon: Calendar },
+      { label: 'Hộp số', href: '/quan-ly/hop-so', icon: Settings2 },
+      { label: 'Số km', href: '/thiet-lap/so-km', icon: Gauge },
+      { label: 'Màu sắc', href: '/thiet-lap/mau-sac', icon: Palette },
+      { label: 'Biển số', href: '/thiet-lap/bien-so', icon: ScanText },
+      { label: 'Tình trạng xe', href: '/thiet-lap/tinh-trang', icon: ClipboardCheck },
+    ]
+  },
+  { label: 'Dịch vụ', href: '/quan-ly/dich-vu', icon: Wrench },
+  { label: 'Tin tức', href: '/quan-ly/tin-tuc', icon: Newspaper },
+  {
+    label: 'Chi nhánh', icon: Building2, children: [
+      { label: 'Danh mục chi nhánh', href: '/quan-ly/danh-muc-chi-nhanh', icon: FolderTree },
+      { label: 'Danh sách chi nhánh', href: '/quan-ly/chi-nhanh', icon: Building2 },
+    ]
+  },
+  {
+    label: 'Bài viết & nội dung', icon: FileText, children: [
       { label: 'Giới thiệu', href: '/quan-ly/gioi-thieu', icon: Info },
       { label: 'Cảm nhận KH', href: '/quan-ly/cam-nhan-khach-hang', icon: Heart },
       { label: 'Câu hỏi thường gặp', href: '/quan-ly/cau-hoi-thuong-gap', icon: HelpCircle },
-      { label: 'Tin tức', href: '/quan-ly/tin-tuc', icon: Newspaper },
       { label: 'Tuyển dụng', href: '/quan-ly/tuyen-dung', icon: Briefcase },
+      { label: 'Nội dung thống kê', href: '/quan-ly/thong-ke-noi-dung', icon: BarChart3 },
+      { label: 'Tại sao chọn', href: '/thiet-lap/tai-sao-chon', icon: Star },
     ]
   },
   {
-    label: 'Thiết lập', icon: Palette, children: [
-      { label: 'Thông tin chung', href: '/thiet-lap/thong-tin', icon: Info },
-      { label: 'Slideshow', href: '/thiet-lap/slideshow', icon: Image },
-      { label: 'Footer', href: '/thiet-lap/footer', icon: PanelLeft },
-      { label: 'Logo', href: '/thiet-lap/logo', icon: Star },
-      { label: 'Favicon', href: '/thiet-lap/favicon', icon: ImagePlus },
-      { label: 'Màu sắc', href: '/thiet-lap/mau-sac', icon: Palette },
-      { label: 'Biển số', href: '/thiet-lap/bien-so', icon: MapPin },
-      { label: 'Tình trạng xe', href: '/thiet-lap/tinh-trang', icon: Activity },
-      { label: 'Số KM', href: '/thiet-lap/so-km', icon: Activity },
-      { label: 'Nút gọi', href: '/thiet-lap/nut-goi', icon: Phone },
-      { label: 'Mạng xã hội', href: '/thiet-lap/mang-xa-hoi', icon: Share2 },
-      { label: 'Ứng dụng', href: '/thiet-lap/ung-dung', icon: Smartphone },
-      { label: 'Text trả góp', href: '/thiet-lap/text-tra-gop', icon: CreditCard },
-      { label: 'Text bán xe', href: '/thiet-lap/text-ban-xe', icon: FileText },
-      { label: 'Text lên đời', href: '/thiet-lap/text-len-doi', icon: FileText },
-      { label: 'Khám phá xe', href: '/thiet-lap/kham-pha-xe', icon: Compass },
+    label: 'Quy trình & hướng dẫn', icon: ListChecks, children: [
       { label: 'Quy trình bán xe', href: '/thiet-lap/quy-trinh-ban-xe', icon: ListChecks },
+      { label: 'Khám phá xe', href: '/thiet-lap/kham-pha-xe', icon: Compass },
       { label: 'Các bước mua xe', href: '/thiet-lap/cac-buoc-mua-xe', icon: ShoppingCart },
       { label: 'Các bước bán xe', href: '/thiet-lap/cac-buoc-ban-xe', icon: HandCoins },
       { label: 'Các bước lên đời', href: '/thiet-lap/cac-buoc-len-doi', icon: ArrowLeftRight },
+      { label: 'Chính sách & ĐK', href: '/thiet-lap/chinh-sach-dieu-kien', icon: BookOpen },
+    ]
+  },
+  {
+    label: 'Hộp thư', icon: Mail, children: [
+      { label: 'Thư bán xe', href: '/thu/ban-xe', icon: Mail },
+      { label: 'Thư lên đời xe', href: '/thu/len-doi-xe', icon: ArrowLeftRight },
+      { label: 'Yêu cầu gọi lại', href: '/thu/yeu-cau-goi-lai', icon: PhoneCall },
+      { label: 'Đăng ký nhận tin', href: '/thu/dang-ky-nhan-tin', icon: UserPlus },
+    ]
+  },
+  {
+    label: 'Trang tĩnh', icon: FileText, children: [
+      { label: 'Liên hệ', href: '/thiet-lap/lien-he', icon: PhoneCall },
+      { label: 'Footer', href: '/thiet-lap/footer', icon: PanelBottom },
+      { label: 'Text trả góp', href: '/thiet-lap/text-tra-gop', icon: CreditCard },
+      { label: 'Text bán xe', href: '/thiet-lap/text-ban-xe', icon: FileText },
+      { label: 'Text lên đời', href: '/thiet-lap/text-len-doi', icon: FileText },
+    ]
+  },
+  {
+    label: 'Hình ảnh & kênh', icon: Image, children: [
+      { label: 'Logo', href: '/thiet-lap/logo', icon: BadgeCheck },
+      { label: 'Favicon', href: '/thiet-lap/favicon', icon: ImagePlus },
+      { label: 'Slideshow', href: '/thiet-lap/slideshow', icon: Image },
       { label: 'Banner dòng xe', href: '/thiet-lap/banner-dong-xe', icon: Image },
       { label: 'Banner lên đời', href: '/thiet-lap/banner-len-doi', icon: Image },
-      { label: 'Chính sách & ĐK', href: '/thiet-lap/chinh-sach-dieu-kien', icon: BookOpen },
-      { label: 'Tại sao chọn', href: '/thiet-lap/tai-sao-chon', icon: Star },
       { label: 'Ảnh vì sao chọn', href: '/thiet-lap/anh-vi-sao-chon', icon: ImagePlus },
       { label: 'Ảnh chi nhánh', href: '/thiet-lap/anh-chi-nhanh', icon: ImagePlus },
-      { label: 'Gợi ý năm SX', href: '/thiet-lap/goi-y-nam-san-xuat', icon: Calendar },
+      { label: 'Mạng xã hội', href: '/thiet-lap/mang-xa-hoi', icon: Share2 },
+      { label: 'Ứng dụng', href: '/thiet-lap/ung-dung', icon: Smartphone },
+    ]
+  },
+  {
+    label: 'Cài đặt website', icon: Settings2, children: [
+      { label: 'Thông tin chung', href: '/thiet-lap/thong-tin', icon: Info },
+      { label: 'Nút gọi', href: '/thiet-lap/nut-goi', icon: Phone },
     ]
   },
   {
@@ -95,10 +121,9 @@ const menuItems: MenuItem[] = [
   {
     label: 'Tài khoản', icon: Users, children: [
       { label: 'Khách hàng', href: '/tai-khoan/khach-hang', icon: Users },
-      { label: 'Thông tin Admin', href: '/tai-khoan/admin', icon: Users },
+      { label: 'Thông tin Admin', href: '/tai-khoan/admin', icon: UserCog },
     ]
   },
-  { label: 'Thống kê', href: '/thong-ke', icon: BarChart3 },
 ];
 
 function SidebarMenuItem({ item, depth = 0 }: { item: MenuItem; depth?: number }) {
@@ -119,7 +144,7 @@ function SidebarMenuItem({ item, depth = 0 }: { item: MenuItem; depth?: number }
       <div>
         <button
           onClick={() => setOpen(!open)}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 group
+          className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-base transition-all duration-200 group
             ${isChildActive
               ? 'bg-white/10 text-white'
               : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -152,7 +177,8 @@ function SidebarMenuItem({ item, depth = 0 }: { item: MenuItem; depth?: number }
   return (
     <Link
       href={item.href || '/'}
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 group
+      aria-current={isActive ? 'page' : undefined}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-base transition-all duration-200 group
         ${isActive
           ? 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/20'
           : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -176,6 +202,7 @@ function SidebarMenuItem({ item, depth = 0 }: { item: MenuItem; depth?: number }
 
 export default function Sidebar() {
   const { sidebarOpen } = useTheme();
+  const [profile] = useLocalStore('/tai-khoan/admin', { name: 'Administrator', email: 'admin@xeluottoantrung.com', phone: '0901234567' });
 
   return (
     <aside
@@ -208,12 +235,12 @@ export default function Sidebar() {
       <div className="p-3 border-t border-white/10 shrink-0">
         <div className="flex items-center gap-3 px-2">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-amber-500 flex items-center justify-center text-white font-bold text-xs shrink-0">
-            A
+            {profile.name.charAt(0).toUpperCase() || 'A'}
           </div>
           {sidebarOpen && (
             <div className="animate-fadeIn min-w-0">
-              <p className="text-white text-sm font-medium truncate">Admin</p>
-              <p className="text-gray-500 text-xs truncate">admin@toantrung.com</p>
+              <p className="text-white text-sm font-medium truncate">{profile.name}</p>
+              <p className="text-gray-500 text-xs truncate">{profile.email}</p>
             </div>
           )}
         </div>

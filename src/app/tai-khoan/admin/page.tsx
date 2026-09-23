@@ -3,9 +3,17 @@ import { PageHeader, Button, FormField, Input } from '@/components/ui';
 import { Save, Shield, Key } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useLocalStore } from '@/lib/local-store';
 
 export default function AdminInfoPage() {
   const [showChangePass, setShowChangePass] = useState(false);
+  const [profile, setProfile] = useLocalStore('/tai-khoan/admin', { name: 'Administrator', email: 'admin@xeluottoantrung.com', phone: '0901234567' });
+  const saveProfile = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setProfile({ name: String(form.get('name') || '').trim(), email: String(form.get('email') || '').trim(), phone: String(form.get('phone') || '').trim() });
+    toast.success('Đã lưu thông tin trên trình duyệt này.');
+  };
 
   return (
     <div className="space-y-6">
@@ -21,13 +29,13 @@ export default function AdminInfoPage() {
           </div>
         </div>
         <div className="pt-16 pb-6 px-6">
-          <h2 className="text-xl font-bold">Administrator</h2>
-          <p className="text-sm text-[var(--muted-fg)]">admin@xeluottoantrung.com • Super Admin</p>
+          <h2 className="text-xl font-bold">{profile.name}</h2>
+          <p className="text-sm text-[var(--muted-fg)]">{profile.email} • Super Admin</p>
         </div>
       </div>
 
       {/* Info Form */}
-      <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6">
+      <form onSubmit={saveProfile} className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
             <Shield className="w-5 h-5 text-blue-600" />
@@ -38,15 +46,15 @@ export default function AdminInfoPage() {
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Tên hiển thị"><Input defaultValue="Administrator" /></FormField>
-          <FormField label="Email"><Input type="email" defaultValue="admin@xeluottoantrung.com" /></FormField>
-          <FormField label="Số điện thoại"><Input defaultValue="0901234567" /></FormField>
+          <FormField label="Tên hiển thị"><Input name="name" defaultValue={profile.name} required /></FormField>
+          <FormField label="Email"><Input name="email" type="email" defaultValue={profile.email} required /></FormField>
+          <FormField label="Số điện thoại"><Input name="phone" defaultValue={profile.phone} /></FormField>
           <FormField label="Vai trò"><Input defaultValue="Super Admin" disabled /></FormField>
         </div>
         <div className="mt-6 flex justify-end">
-          <Button onClick={() => toast.success('Đã cập nhật thông tin!')}><Save className="w-4 h-4" /> Lưu thay đổi</Button>
+          <Button type="submit"><Save className="w-4 h-4" /> Lưu thay đổi</Button>
         </div>
-      </div>
+      </form>
 
       {/* Change Password */}
       <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6">
@@ -66,12 +74,7 @@ export default function AdminInfoPage() {
         </div>
         {showChangePass && (
           <div className="space-y-4 animate-fadeIn">
-            <FormField label="Mật khẩu hiện tại"><Input type="password" placeholder="Nhập mật khẩu hiện tại" /></FormField>
-            <FormField label="Mật khẩu mới"><Input type="password" placeholder="Nhập mật khẩu mới" /></FormField>
-            <FormField label="Xác nhận mật khẩu mới"><Input type="password" placeholder="Nhập lại mật khẩu mới" /></FormField>
-            <div className="flex justify-end">
-              <Button onClick={() => { toast.success('Đã đổi mật khẩu thành công!'); setShowChangePass(false); }}><Key className="w-4 h-4" /> Cập nhật mật khẩu</Button>
-            </div>
+            <p className="text-sm text-[var(--muted-fg)]">Chức năng đổi mật khẩu cần kết nối hệ thống xác thực của website. Chưa có máy chủ xác thực trong project hiện tại.</p>
           </div>
         )}
       </div>

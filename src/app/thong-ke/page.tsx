@@ -1,7 +1,7 @@
 'use client';
 import { PageHeader, StatsCard } from '@/components/ui';
 import { mockDashboardStats, formatNumber } from '@/lib/mock-data';
-import { Eye, Users, Car, TrendingUp, Globe, Monitor, Smartphone, Clock } from 'lucide-react';
+import { Eye, Users, Globe, Clock } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 
 const browserData = [
@@ -44,7 +44,7 @@ export default function ThongKePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Thống kê" subtitle="Thống kê truy cập & hiệu suất website" />
+      <PageHeader title="Thống kê" subtitle="Số liệu truy cập minh họa; cần kết nối hệ thống analytics để xem dữ liệu thực" />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">

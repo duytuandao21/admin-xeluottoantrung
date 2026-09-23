@@ -1,13 +1,14 @@
 'use client';
 import { useState } from 'react';
 import { PageHeader, DataTable, StatusBadge, Modal, ConfirmDialog, Button } from '@/components/ui';
-import { mockMails, formatDate } from '@/lib/mock-data';
-import { Mail as MailIcon, Eye, Trash2, CheckCircle, Phone, User, Calendar, Car } from 'lucide-react';
+import { mockMails } from '@/lib/mock-data';
+import { useLocalStore } from '@/lib/local-store';
+import { CheckCircle, Phone, User, Calendar, Car } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Mail } from '@/lib/types';
 
 function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string; subtitle: string }) {
-  const [mails, setMails] = useState(mockMails.filter(m => m.type === type));
+  const [mails, setMails] = useLocalStore<Mail[]>(`/thu/${type}`, mockMails.filter(m => m.type === type));
   const [viewItem, setViewItem] = useState<Mail | null>(null);
   const [deleteItem, setDeleteItem] = useState<Mail | null>(null);
 
@@ -18,7 +19,7 @@ function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string
 
   const columns = [
     { key: 'id', label: 'STT', width: '60px', render: (item: Record<string, unknown>) => <span className="text-[var(--muted-fg)]">#{String(item.id)}</span> },
-    {
+    ...(type !== 'dang-ky' ? [{
       key: 'name', label: 'Khách hàng', render: (item: Record<string, unknown>) => (
         <div className="flex items-center gap-3">
           <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${item.status === 'unread' ? 'bg-red-500' : 'bg-gray-400'}`}>
@@ -30,7 +31,7 @@ function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string
           </div>
         </div>
       )
-    },
+    }] : []),
     ...(type === 'ban-xe' ? [{ key: 'carName', label: 'Xe muốn bán', render: (item: Record<string, unknown>) => <span className="text-sm">{String(item.carName || '—')}</span> }] : []),
     ...(type === 'len-doi' ? [
       { key: 'currentCar', label: 'Xe hiện tại', render: (item: Record<string, unknown>) => <span className="text-sm">{String(item.currentCar || '—')}</span> },
@@ -43,16 +44,21 @@ function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string
   ];
 
   const unreadCount = mails.filter(m => m.status === 'unread').length;
+  const exportEmails = () => {
+    const csv = '\uFEFFEmail\r\n' + mails.map(mail => `"${String(mail.email || '').replaceAll('"', '""')}"`).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url; link.download = 'dang-ky-nhan-tin.csv'; link.click(); URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      {!viewItem && <><PageHeader
         title={title}
-        subtitle={`${mails.length} thư • ${unreadCount} chưa đọc`}
+        subtitle={`${subtitle} • ${mails.length} thư • ${unreadCount} chưa đọc`}
         actions={
-          <Button variant="secondary" size="sm" onClick={() => { setMails(prev => prev.map(m => ({ ...m, status: 'read' as const }))); toast.success('Đã đánh dấu tất cả đã đọc'); }}>
-            <CheckCircle className="w-4 h-4" /> Đánh dấu tất cả đã đọc
-          </Button>
+          type === 'dang-ky' ? <Button variant="secondary" size="sm" onClick={exportEmails}>Xuất danh sách email</Button> :
+          <Button variant="secondary" size="sm" onClick={() => { setMails(prev => prev.map(m => ({ ...m, status: 'read' as const }))); toast.success('Đã đánh dấu tất cả đã đọc'); }}><CheckCircle className="w-4 h-4" /> Đánh dấu tất cả đã đọc</Button>
         }
       />
 
@@ -60,10 +66,11 @@ function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string
         columns={columns}
         data={mails as unknown as Record<string, unknown>[]}
         searchPlaceholder="Tìm kiếm theo tên, SĐT..."
-        searchFields={['name', 'phone', 'email', 'carName']}
+        searchFields={['name', 'phone', 'email', 'carName', 'desiredCar']}
         onView={(item) => { const m = item as unknown as Mail; setViewItem(m); if (m.status === 'unread') markRead(m); }}
         onDelete={(item) => setDeleteItem(item as unknown as Mail)}
       />
+      </>}
 
       {/* View Modal */}
       <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="Chi tiết thư" size="md">
@@ -92,6 +99,7 @@ function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string
                 <p className="text-sm">{viewItem.content}</p>
               </div>
             )}
+            {viewItem.status !== 'replied' && <div className="flex justify-end"><Button type="button" onClick={() => { setMails(prev => prev.map(mail => mail.id === viewItem.id ? { ...mail, status: 'replied' } : mail)); setViewItem({ ...viewItem, status: 'replied' }); toast.success('Đã đánh dấu đã liên hệ.'); }}>Đánh dấu đã liên hệ</Button></div>}
           </div>
         )}
       </Modal>
@@ -103,11 +111,11 @@ function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string
 
 function InfoCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="p-3 rounded-xl bg-[var(--muted)] flex items-start gap-3">
+    <div className="p-5 rounded-xl bg-[var(--muted)] flex items-start gap-3">
       <div className="text-[var(--muted-fg)] mt-0.5">{icon}</div>
       <div>
-        <p className="text-xs text-[var(--muted-fg)]">{label}</p>
-        <p className="text-sm font-medium">{value}</p>
+        <p className="text-sm text-[var(--muted-fg)]">{label}</p>
+        <p className="text-base font-medium">{value}</p>
       </div>
     </div>
   );

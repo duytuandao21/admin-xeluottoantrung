@@ -172,6 +172,11 @@ body {
   background-color: var(--card-hover);
 }
 
+.product-option:has(input:checked) {
+  border-color: rgba(220, 38, 38, 0.5);
+  background-color: rgba(220, 38, 38, 0.06);
+}
+
 /* Input focus */
 input:focus, select:focus, textarea:focus {
   outline: none;

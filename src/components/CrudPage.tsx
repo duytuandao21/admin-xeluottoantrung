@@ -1,18 +1,25 @@
 'use client';
 
 import { useState, ReactNode } from 'react';
-import { PageHeader, DataTable, Modal, ConfirmDialog, FormField, Input, Textarea, Select, Button, StatusBadge } from '@/components/ui';
+import { usePathname } from 'next/navigation';
+import { useLocalStore, readImage, slugify } from '@/lib/local-store';
+import { PageHeader, DataTable, Modal, ConfirmDialog, FormField, Input, Textarea, Select, Button, type Column } from '@/components/ui';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import ImageUpload from '@/components/ImageUpload';
+import ColorCodeInput from '@/components/ColorCodeInput';
+import { isVietnamesePhone, normalizeVietnamesePhone } from '@/lib/phone';
 
 interface FieldConfig {
   name: string;
   label: string;
-  type?: 'text' | 'number' | 'textarea' | 'select' | 'color';
+  type?: 'text' | 'number' | 'textarea' | 'select' | 'color' | 'image' | 'url' | 'email' | 'date' | 'checkbox' | 'tel';
   required?: boolean;
   placeholder?: string;
   options?: { value: string; label: string }[];
   defaultValue?: string | number;
+  min?: number;
+  max?: number;
 }
 
 interface CrudPageProps<T> {
@@ -25,12 +32,14 @@ interface CrudPageProps<T> {
   searchFields?: string[];
   idField?: string;
   nameField?: string;
+  storageKey?: string;
 }
 
 export default function CrudPage<T extends Record<string, unknown>>({
-  title, subtitle, data: initialData, columns, formFields, searchPlaceholder, searchFields, idField = 'id', nameField = 'name'
+  title, subtitle, data: initialData, columns, formFields, searchPlaceholder, searchFields, idField = 'id', nameField = 'name', storageKey
 }: CrudPageProps<T>) {
-  const [data, setData] = useState(initialData);
+  const pathname = usePathname();
+  const [data, setData] = useLocalStore(storageKey || pathname, initialData);
   const [editItem, setEditItem] = useState<T | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [deleteItem, setDeleteItem] = useState<T | null>(null);
@@ -43,23 +52,51 @@ export default function CrudPage<T extends Record<string, unknown>>({
     }
   };
 
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     const formDataObj: Record<string, unknown> = {};
-    formFields.forEach(f => {
-      const val = form.get(f.name);
-      formDataObj[f.name] = f.type === 'number' ? Number(val) : val;
-    });
+    try {
+      for (const field of formFields) {
+        const val = form.get(field.name);
+        if (field.type === 'image') {
+          if (val instanceof File && val.size) formDataObj[field.name] = await readImage(val);
+          else formDataObj[field.name] = form.has(`${field.name}__remove`) ? '' : editItem?.[field.name] || '';
+        } else if (field.type === 'checkbox') {
+          formDataObj[field.name] = form.has(field.name);
+        } else if (field.type === 'tel') {
+          const phone = String(val || '');
+          if (phone || field.required) {
+            if (!isVietnamesePhone(phone)) throw new Error('Số điện thoại không hợp lệ. Nhập số di động 10 số hoặc số bàn 10–11 số của Việt Nam.');
+            formDataObj[field.name] = normalizeVietnamesePhone(phone);
+          } else formDataObj[field.name] = '';
+        } else if (field.type === 'number' || field.name.endsWith('Id')) {
+          const number = val === '' || val === null ? (field.name === 'order' ? data.length + 1 : 0) : Number(val);
+          if (field.name === 'rating' && (!Number.isInteger(number) || number < 1 || number > 5)) throw new Error('Đánh giá phải là số nguyên từ 1 đến 5.');
+          formDataObj[field.name] = number;
+        } else {
+          formDataObj[field.name] = String(val || (field.name === 'status' ? field.options?.[0]?.value || '' : '')).trim();
+        }
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể lưu ảnh.');
+      return;
+    }
+
+    if (formFields.some(f => f.name === 'slug') && !formDataObj.slug) {
+      formDataObj.slug = slugify(String(formDataObj[nameField] || formDataObj.title || ''));
+    }
 
     if (editItem) {
       setData(prev => prev.map(item =>
-        item[idField] === editItem[idField] ? { ...item, ...formDataObj } : item
+        item[idField] === editItem[idField] ? { ...item, ...formDataObj, ...(Object.hasOwn(item, 'updatedAt') ? { updatedAt: new Date().toISOString().split('T')[0] } : {}) } : item
       ));
       toast.success('Đã cập nhật thành công!');
     } else {
       const maxId = data.length > 0 ? Math.max(...data.map(d => Number(d[idField]) || 0)) : 0;
-      const newItem = { ...formDataObj, [idField]: maxId + 1, status: 'active', order: data.length + 1 } as T;
+      const today = new Date().toISOString().split('T')[0];
+      const timestamps = Object.hasOwn(initialData[0] || {}, 'createdAt') ? { createdAt: today, updatedAt: today } : {};
+      const newItem = { status: 'active', order: data.length + 1, ...timestamps, ...formDataObj, [idField]: maxId + 1 } as unknown as T;
       setData(prev => [newItem, ...prev]);
       toast.success('Đã thêm mới thành công!');
     }
@@ -68,38 +105,52 @@ export default function CrudPage<T extends Record<string, unknown>>({
   };
 
   const isOpen = showAdd || !!editItem;
+  const toggleBoolean = (item: T, field: string) => {
+    setData(previous => previous.map(current => current[idField] === item[idField] ? { ...current, [field]: !Boolean(current[field]) } : current));
+  };
+  const listColumns = columns.map(column => ['featured', 'installment'].includes(column.key) ? {
+    ...column,
+    render: (item: T) => <button type="button" role="switch" aria-checked={Boolean(item[column.key])} aria-label={`${column.label}: ${Boolean(item[column.key]) ? 'Bật' : 'Tắt'}`} onClick={() => toggleBoolean(item, column.key)} className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${item[column.key] ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-600'}`}><span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${item[column.key] ? 'translate-x-6' : 'translate-x-1'}`} /></button>,
+  } : column);
 
   return (
     <div className="space-y-6">
-      <PageHeader title={title} subtitle={subtitle || `${data.length} mục`} actions={
+      {!isOpen && <><PageHeader title={title} subtitle={subtitle || `${data.length} mục`} actions={
         <Button size="sm" onClick={() => setShowAdd(true)}><Plus className="w-4 h-4" /> Thêm mới</Button>
       } />
 
       <DataTable
-        columns={columns}
-        data={data as unknown as Record<string, unknown>[]}
+        columns={listColumns as Column<T>[]}
+        data={data}
         searchPlaceholder={searchPlaceholder}
         searchFields={searchFields}
-        onEdit={(item) => setEditItem(item as unknown as T)}
-        onDelete={(item) => setDeleteItem(item as unknown as T)}
-      />
+        onEdit={(item) => setEditItem(item as T)}
+        onDelete={(item) => setDeleteItem(item as T)}
+      /></>}
 
       <Modal open={isOpen} onClose={() => { setEditItem(null); setShowAdd(false); }} title={editItem ? `Sửa ${title.toLowerCase()}` : `Thêm ${title.toLowerCase()}`} size="md">
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form key={editItem ? String(editItem[idField]) : 'new'} onSubmit={handleSave} className="space-y-7">
+          <div className="border-b border-[var(--border-color)] pb-5"><h2 className="text-xl font-semibold">Thông tin {title.toLowerCase()}</h2><p className="mt-1 text-sm text-[var(--muted-fg)]">Các trường có dấu * là bắt buộc.</p></div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
             {formFields.map(field => (
-              <FormField key={field.name} label={field.label} required={field.required}>
+              <div key={field.name} className={field.type === 'textarea' || field.type === 'image' ? 'lg:col-span-2' : ''}><FormField label={field.label} required={field.required}>
                 {field.type === 'textarea' ? (
-                  <Textarea name={field.name} defaultValue={editItem ? String(editItem[field.name] ?? '') : ''} rows={3} placeholder={field.placeholder} required={field.required} />
+                  <Textarea name={field.name} defaultValue={editItem ? String(editItem[field.name] ?? '') : String(field.defaultValue ?? '')} rows={3} placeholder={field.placeholder} required={field.required} />
                 ) : field.type === 'select' ? (
-                  <Select name={field.name} defaultValue={editItem ? String(editItem[field.name] ?? '') : ''} required={field.required}>
+                  <Select name={field.name} defaultValue={editItem ? String(editItem[field.name] ?? '') : String(field.defaultValue ?? (field.name === 'status' ? field.options?.[0]?.value || '' : ''))} required={field.required}>
                     <option value="">-- Chọn --</option>
                     {field.options?.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </Select>
+                ) : field.type === 'image' ? (
+                  <ImageUpload name={field.name} existing={String(editItem?.[field.name] || '')} required={field.required} />
+                ) : field.type === 'color' ? (
+                  <ColorCodeInput name={field.name} defaultValue={String(editItem?.[field.name] || field.defaultValue || '')} colorName={String(editItem?.title || '')} />
+                ) : field.type === 'checkbox' ? (
+                  <input name={field.name} type="checkbox" defaultChecked={Boolean(editItem ? editItem[field.name] : field.defaultValue)} className="h-4 w-4 accent-red-600" />
                 ) : (
-                  <Input name={field.name} type={field.type || 'text'} defaultValue={editItem ? String(editItem[field.name] ?? '') : ''} placeholder={field.placeholder} required={field.required} />
+                  <><Input name={field.name} type={field.type || 'text'} defaultValue={editItem ? String(editItem[field.name] ?? '') : String(field.defaultValue ?? '')} placeholder={field.placeholder} required={field.required} min={field.name === 'rating' ? 1 : field.min} max={field.name === 'rating' ? 5 : field.max} step={field.name === 'rating' ? 1 : undefined} inputMode={field.type === 'tel' ? 'tel' : undefined} maxLength={field.type === 'tel' ? 20 : undefined} onBlur={field.type === 'tel' ? event => { event.currentTarget.value = normalizeVietnamesePhone(event.currentTarget.value); } : undefined} />{field.type === 'tel' && <p className="mt-2 text-sm text-[var(--muted-fg)]">Nhập số di động (03, 05, 07, 08, 09) hoặc số điện thoại bàn; chấp nhận +84.</p>}</>
                 )}
-              </FormField>
+              </FormField></div>
             ))}
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-color)]">

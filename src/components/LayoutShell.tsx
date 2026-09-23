@@ -9,9 +9,9 @@ export default function LayoutShellClient({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen">
       <Sidebar />
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-[68px]'}`}>
+      <div className={`min-w-0 max-w-full transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-[68px]'}`}>
         <Header />
-        <main className="p-4 lg:p-6 animate-fadeIn">
+        <main className="min-w-0 max-w-full overflow-x-hidden p-4 lg:p-6 animate-fadeIn">
           {children}
         </main>
       </div>

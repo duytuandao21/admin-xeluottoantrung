@@ -1,13 +1,26 @@
 'use client';
 import { useTheme } from '@/lib/theme-context';
-import { Bell, Sun, Moon, Menu, LogOut, Key, Trash2, ExternalLink, Search } from 'lucide-react';
+import { Bell, Sun, Moon, Menu, Key, ExternalLink, Search } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useLocalStore } from '@/lib/local-store';
+import { mockMails } from '@/lib/mock-data';
+import type { Mail } from '@/lib/types';
+import { menuItems } from '@/components/Sidebar';
 
 export default function Header() {
   const { theme, toggleTheme, sidebarOpen, setSidebarOpen } = useTheme();
   const [showNotif, setShowNotif] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const router = useRouter();
+  const [sellMails] = useLocalStore<Mail[]>('/thu/ban-xe', mockMails.filter(mail => mail.type === 'ban-xe'));
+  const [tradeMails] = useLocalStore<Mail[]>('/thu/len-doi', mockMails.filter(mail => mail.type === 'len-doi'));
+  const [callMails] = useLocalStore<Mail[]>('/thu/goi-lai', mockMails.filter(mail => mail.type === 'goi-lai'));
+  const [newsletterMails] = useLocalStore<Mail[]>('/thu/dang-ky', mockMails.filter(mail => mail.type === 'dang-ky'));
+  const [profile] = useLocalStore('/tai-khoan/admin', { name: 'Administrator', email: 'admin@xeluottoantrung.com', phone: '0901234567' });
   const notifRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
 
@@ -33,11 +46,14 @@ export default function Header() {
   }, []);
 
   const notifications = [
-    { label: 'Thư bán xe', count: 1895, href: '/thu/ban-xe' },
-    { label: 'Thư lên đời xe', count: 68, href: '/thu/len-doi-xe' },
-    { label: 'Yêu cầu gọi lại', count: 476, href: '/thu/yeu-cau-goi-lai' },
-    { label: 'Đăng ký nhận tin', count: 522, href: '/thu/dang-ky-nhan-tin' },
+    { label: 'Thư bán xe', count: sellMails.filter(mail => mail.status === 'unread').length, href: '/thu/ban-xe' },
+    { label: 'Thư lên đời xe', count: tradeMails.filter(mail => mail.status === 'unread').length, href: '/thu/len-doi-xe' },
+    { label: 'Yêu cầu gọi lại', count: callMails.filter(mail => mail.status === 'unread').length, href: '/thu/yeu-cau-goi-lai' },
+    { label: 'Đăng ký nhận tin', count: newsletterMails.filter(mail => mail.status === 'unread').length, href: '/thu/dang-ky-nhan-tin' },
   ];
+  const unreadCount = notifications.reduce((sum, notification) => sum + notification.count, 0);
+  const searchPages = menuItems.flatMap(item => item.href ? [{ label: item.label, href: item.href }] : (item.children || []).flatMap(child => child.href ? [{ label: child.label, href: child.href }] : []));
+  const searchResults = searchPages.filter(page => page.label.toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi')));
 
   return (
     <>
@@ -50,7 +66,7 @@ export default function Header() {
             <Menu className="w-5 h-5 text-[var(--muted-fg)]" />
           </button>
           <span className="hidden sm:block text-sm text-[var(--muted-fg)]">
-            Xin chào, <span className="font-semibold text-[var(--foreground)]">Admin</span>!
+            Xin chào, <span className="font-semibold text-[var(--foreground)]">{profile.name}</span>!
           </span>
         </div>
 
@@ -77,9 +93,7 @@ export default function Header() {
               className="p-2 rounded-lg hover:bg-[var(--muted)] transition-colors relative"
             >
               <Bell className="w-5 h-5 text-[var(--muted-fg)]" />
-              <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse">
-                !
-              </span>
+              {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{unreadCount > 99 ? '99+' : unreadCount}</span>}
             </button>
             {showNotif && (
               <div className="absolute right-0 top-full mt-2 w-72 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl shadow-xl animate-scaleIn origin-top-right overflow-hidden">
@@ -87,7 +101,7 @@ export default function Header() {
                   <p className="font-semibold text-sm">Thông báo</p>
                 </div>
                 {notifications.map((n, i) => (
-                  <a key={i} href={n.href} className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] transition-colors">
+                  <Link key={i} href={n.href} onClick={() => setShowNotif(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] transition-colors">
                     <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
                       <Bell className="w-4 h-4 text-red-500" />
                     </div>
@@ -95,7 +109,7 @@ export default function Header() {
                       <p className="text-sm font-medium truncate">{n.label}</p>
                       <p className="text-xs text-[var(--muted-fg)]">{n.count.toLocaleString()} mới</p>
                     </div>
-                  </a>
+                  </Link>
                 ))}
               </div>
             )}
@@ -108,28 +122,19 @@ export default function Header() {
               className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-[var(--muted)] transition-colors"
             >
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-amber-500 flex items-center justify-center text-white font-bold text-xs">
-                A
+                {profile.name.charAt(0).toUpperCase() || 'A'}
               </div>
             </button>
             {showSettings && (
               <div className="absolute right-0 top-full mt-2 w-56 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl shadow-xl animate-scaleIn origin-top-right overflow-hidden">
-                <a href="/tai-khoan/admin" className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] transition-colors text-sm">
+                <Link href="/tai-khoan/admin" className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] transition-colors text-sm">
                   <ExternalLink className="w-4 h-4 text-[var(--muted-fg)]" />
                   <span>Thông tin admin</span>
-                </a>
-                <a href="#" className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] transition-colors text-sm">
+                </Link>
+                <Link href="/tai-khoan/admin" className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] transition-colors text-sm">
                   <Key className="w-4 h-4 text-[var(--muted-fg)]" />
                   <span>Đổi mật khẩu</span>
-                </a>
-                <div className="border-t border-[var(--border-color)]" />
-                <a href="#" className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--muted)] transition-colors text-sm">
-                  <Trash2 className="w-4 h-4 text-[var(--muted-fg)]" />
-                  <span>Xóa bộ nhớ tạm</span>
-                </a>
-                <a href="#" className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors text-sm text-red-600">
-                  <LogOut className="w-4 h-4" />
-                  <span>Đăng xuất</span>
-                </a>
+                </Link>
               </div>
             )}
           </div>
@@ -146,24 +151,22 @@ export default function Header() {
               <input
                 autoFocus
                 type="text"
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+                onKeyDown={event => { if (event.key === 'Enter' && searchResults[0]) { router.push(searchResults[0].href); setSearchOpen(false); setSearch(''); } }}
                 placeholder="Tìm kiếm trang, chức năng..."
                 className="flex-1 bg-transparent border-none outline-none text-sm"
               />
               <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--muted)] border border-[var(--border-color)] font-mono">ESC</kbd>
             </div>
             <div className="p-2 max-h-[50vh] overflow-y-auto">
-              <p className="px-3 py-2 text-xs font-semibold text-[var(--muted-fg)] uppercase">Trang phổ biến</p>
-              {[
-                { label: 'Tổng quan', href: '/' },
-                { label: 'Danh sách xe', href: '/san-pham' },
-                { label: 'Thư bán xe', href: '/thu/ban-xe' },
-                { label: 'Thiết lập thông tin', href: '/thiet-lap/thong-tin' },
-                { label: 'Thống kê', href: '/thong-ke' },
-              ].map((item, i) => (
-                <a key={i} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[var(--muted)] transition-colors text-sm" onClick={() => setSearchOpen(false)}>
+              <p className="px-3 py-2 text-xs font-semibold text-[var(--muted-fg)] uppercase">{search ? 'Kết quả tìm kiếm' : 'Trang phổ biến'}</p>
+              {searchResults.map((item, i) => (
+                <Link key={i} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[var(--muted)] transition-colors text-sm" onClick={() => { setSearchOpen(false); setSearch(''); }}>
                   <span>{item.label}</span>
-                </a>
+                </Link>
               ))}
+              {searchResults.length === 0 && <p className="px-3 py-2 text-sm text-[var(--muted-fg)]">Không tìm thấy trang phù hợp.</p>}
             </div>
           </div>
         </div>

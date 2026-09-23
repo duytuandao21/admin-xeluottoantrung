@@ -12,11 +12,12 @@ export default function TuyenDungPage() {
     { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },
   ]} formFields={[
     { name: 'title', label: 'Vị trí tuyển dụng', required: true, placeholder: 'VD: Nhân viên kinh doanh' },
+    { name: 'image', label: 'Hình tuyển dụng', type: 'image' },
     { name: 'description', label: 'Mô tả công việc', type: 'textarea', required: true },
     { name: 'requirements', label: 'Yêu cầu', type: 'textarea', required: true },
     { name: 'salary', label: 'Mức lương', placeholder: 'VD: 10-20 triệu' },
     { name: 'location', label: 'Địa điểm', placeholder: 'VD: TP.HCM' },
-    { name: 'deadline', label: 'Hạn nộp', placeholder: 'VD: 2024-04-30' },
+    { name: 'deadline', label: 'Hạn nộp', type: 'date' },
     { name: 'status', label: 'Trạng thái', type: 'select', options: [{ value: 'active', label: 'Đang tuyển' }, { value: 'inactive', label: 'Đã đóng' }] },
   ]} searchPlaceholder="Tìm kiếm vị trí..." searchFields={['title', 'location']} nameField="title" />;
 }

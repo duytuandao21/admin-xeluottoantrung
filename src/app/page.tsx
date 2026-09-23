@@ -1,17 +1,26 @@
 'use client';
 
 import { StatsCard, PageHeader } from '@/components/ui';
-import { mockDashboardStats, formatPrice, formatNumber } from '@/lib/mock-data';
+import { mockDashboardStats, mockProducts, mockMails, mockCustomers, formatPrice, formatNumber } from '@/lib/mock-data';
+import { useLocalStore } from '@/lib/local-store';
+import type { Product, Mail as MailRecord, Customer } from '@/lib/types';
 import { Car, Mail, Eye, Users, TrendingUp, Clock, ArrowUpRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Link from 'next/link';
 
 export default function DashboardPage() {
-  const stats = mockDashboardStats;
+  const [products] = useLocalStore<Product[]>('/san-pham', mockProducts);
+  const [sellMails] = useLocalStore<MailRecord[]>('/thu/ban-xe', mockMails.filter(mail => mail.type === 'ban-xe'));
+  const [tradeMails] = useLocalStore<MailRecord[]>('/thu/len-doi', mockMails.filter(mail => mail.type === 'len-doi'));
+  const [callMails] = useLocalStore<MailRecord[]>('/thu/goi-lai', mockMails.filter(mail => mail.type === 'goi-lai'));
+  const [newsletterMails] = useLocalStore<MailRecord[]>('/thu/dang-ky', mockMails.filter(mail => mail.type === 'dang-ky'));
+  const [customers] = useLocalStore<Customer[]>('/tai-khoan/khach-hang', mockCustomers);
+  const allMails = [...sellMails, ...tradeMails, ...callMails, ...newsletterMails];
+  const stats = { ...mockDashboardStats, totalProducts: products.length, totalMails: allMails.filter(mail => mail.status === 'unread').length, totalCustomers: customers.length, recentMails: [...allMails].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5), topProducts: products.filter(product => product.featured).slice(0, 5) };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Tổng quan" subtitle="Chào mừng trở lại, Admin!" />
+      <PageHeader title="Tổng quan" subtitle="Sản phẩm, thư và khách hàng cập nhật theo dữ liệu trình duyệt; lượt truy cập là số liệu minh họa" />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
@@ -118,10 +127,10 @@ export default function DashboardPage() {
                   <td className="py-3 px-4 text-sm text-right font-semibold text-red-600">{formatPrice(product.price)}</td>
                   <td className="py-3 px-4 text-center">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                      product.status === 'active' ? 'bg-emerald-500/10 text-emerald-600' : product.status === 'sold' ? 'bg-blue-500/10 text-blue-600' : 'bg-gray-500/10 text-gray-500'
+                      product.status === 'active' ? 'bg-emerald-500/10 text-emerald-600' : product.status === 'deposit' ? 'bg-amber-500/10 text-amber-600' : product.status === 'sold' ? 'bg-blue-500/10 text-blue-600' : 'bg-gray-500/10 text-gray-500'
                     }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${product.status === 'active' ? 'bg-emerald-500' : product.status === 'sold' ? 'bg-blue-500' : 'bg-gray-400'}`} />
-                      {product.status === 'active' ? 'Đang bán' : product.status === 'sold' ? 'Đã bán' : 'Ẩn'}
+                      <span className={`w-1.5 h-1.5 rounded-full ${product.status === 'active' ? 'bg-emerald-500' : product.status === 'deposit' ? 'bg-amber-500' : product.status === 'sold' ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                      {product.status === 'active' ? 'Đang bán' : product.status === 'deposit' ? 'Đã nhận cọc' : product.status === 'sold' ? 'Đã bán' : 'Ẩn'}
                     </span>
                   </td>
                 </tr>

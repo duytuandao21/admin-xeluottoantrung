@@ -11,6 +11,7 @@ export default function DichVuPage() {
     { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },
   ]} formFields={[
     { name: 'title', label: 'Tên dịch vụ', required: true, placeholder: 'VD: Mua bán xe ô tô' },
+    { name: 'image', label: 'Hình dịch vụ', type: 'image' },
     { name: 'description', label: 'Mô tả', type: 'textarea', required: true, placeholder: 'Mô tả dịch vụ...' },
     { name: 'order', label: 'Thứ tự', type: 'number' },
     { name: 'status', label: 'Trạng thái', type: 'select', options: [{ value: 'active', label: 'Hoạt động' }, { value: 'inactive', label: 'Ẩn' }] },

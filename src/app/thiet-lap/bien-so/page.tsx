@@ -1,9 +1,9 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { mockColors } from '@/lib/mock-data';
+import { mockLicensePlates } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
 export default function Page() {
-  return <CrudPage title="Quản lý biển số" data={mockColors as unknown as Record<string, unknown>[]} columns={[
+  return <CrudPage title="Quản lý biển số" data={mockLicensePlates as unknown as Record<string, unknown>[]} columns={[
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'name', label: 'Loại biển số', sortable: true, render: (item) => <span className="font-medium">{String(item.name)}</span> },
     { key: 'slug', label: 'Slug' },

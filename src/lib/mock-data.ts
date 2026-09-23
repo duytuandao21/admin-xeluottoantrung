@@ -135,12 +135,10 @@ export const mockYears: CarAttribute[] = Array.from({ length: 15 }, (_, i) => ({
 }));
 
 export const mockBudgets: CarAttribute[] = [
-  { id: 1, name: 'Dưới 500 triệu', slug: 'duoi-500', order: 1, status: 'active' },
-  { id: 2, name: '500 - 800 triệu', slug: '500-800', order: 2, status: 'active' },
-  { id: 3, name: '800 triệu - 1 tỷ', slug: '800-1ty', order: 3, status: 'active' },
-  { id: 4, name: '1 - 1.5 tỷ', slug: '1-15ty', order: 4, status: 'active' },
-  { id: 5, name: '1.5 - 2 tỷ', slug: '15-2ty', order: 5, status: 'active' },
-  { id: 6, name: 'Trên 2 tỷ', slug: 'tren-2ty', order: 6, status: 'active' },
+    { id: 1, name: 'Dưới 500 triệu', slug: 'duoi-500', order: 1, status: 'active' },
+    { id: 2, name: '500 đến 700 triệu', slug: '500-den-700-trieu', order: 2, status: 'active' },
+    { id: 3, name: '700 đến 1 tỷ', slug: '700-den-1-ty', order: 3, status: 'active' },
+    { id: 4, name: 'Trên 1 tỷ', slug: 'tren-1-ty', order: 4, status: 'active' },
 ];
 
 export const mockColors: CarAttribute[] = [
@@ -150,6 +148,24 @@ export const mockColors: CarAttribute[] = [
   { id: 4, name: 'Đỏ', slug: 'do', order: 4, status: 'active' },
   { id: 5, name: 'Xanh', slug: 'xanh', order: 5, status: 'active' },
   { id: 6, name: 'Nâu', slug: 'nau', order: 6, status: 'active' },
+];
+
+export const mockLicensePlates: CarAttribute[] = [
+  { id: 1, name: 'Biển tỉnh', slug: 'bien-tinh', order: 1, status: 'active' },
+  { id: 2, name: 'Biển thành phố', slug: 'bien-thanh-pho', order: 2, status: 'active' },
+  { id: 3, name: 'Biển Hà Nội', slug: 'bien-ha-noi', order: 3, status: 'active' },
+];
+
+export const mockConditions: CarAttribute[] = [
+  { id: 1, name: 'Đã nhận cọc', slug: 'da-nhan-coc', order: 1, status: 'active' },
+  { id: 2, name: 'Xe đã bán', slug: 'xe-da-ban', order: 2, status: 'active' },
+];
+
+export const mockMileages: CarAttribute[] = [
+  { id: 1, name: 'Dưới 30.000', slug: 'duoi-30000', order: 1, status: 'active' },
+  { id: 2, name: 'Dưới 50.000', slug: 'duoi-50000', order: 2, status: 'active' },
+  { id: 3, name: 'Dưới 70.000', slug: 'duoi-70000', order: 3, status: 'active' },
+  { id: 4, name: 'Dưới 100.000', slug: 'duoi-100000', order: 4, status: 'active' },
 ];
 
 // --- Dashboard Stats ---

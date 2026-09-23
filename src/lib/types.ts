@@ -13,7 +13,7 @@ export interface Product {
   transmission: string;
   fuel: string;
   color: string;
-  status: 'active' | 'inactive' | 'sold';
+  status: 'active' | 'inactive' | 'deposit' | 'sold';
   condition: string;
   images: string[];
   description?: string;
@@ -21,6 +21,8 @@ export interface Product {
   createdAt: string;
   updatedAt: string;
   featured: boolean;
+  installment?: boolean;
+  newArrival?: boolean;
 }
 
 export interface Category {

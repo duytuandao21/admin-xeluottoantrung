@@ -18,6 +18,7 @@ export default function ChiNhanhPage() {
       ]}
       formFields={[
         { name: 'name', label: 'Tên chi nhánh', required: true, placeholder: 'VD: Chi nhánh Quận 7' },
+        { name: 'image', label: 'Hình chi nhánh', type: 'image' },
         { name: 'phone', label: 'Số điện thoại', required: true, placeholder: '028 1234 5678' },
         { name: 'address', label: 'Địa chỉ', required: true, placeholder: 'Số nhà, đường, quận, TP' },
         { name: 'order', label: 'Thứ tự', type: 'number', placeholder: '1' },
