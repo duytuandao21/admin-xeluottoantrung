@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import NextImage from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/lib/theme-context';
 import { useLocalStore } from '@/lib/local-store';
@@ -29,8 +30,8 @@ export const menuItems: MenuItem[] = [
   {
     label: 'Sản phẩm', icon: Car, children: [
       { label: 'Danh sách xe', href: '/san-pham', icon: Car },
-      { label: 'Hãng xe', href: '/danh-muc/cap-1', icon: Factory },
-      { label: 'Dòng xe', href: '/danh-muc/cap-2', icon: CarFront },
+      { label: 'Hãng xe', href: '/san-pham/hang-xe', icon: Factory },
+      { label: 'Dòng xe', href: '/san-pham/dong-xe', icon: CarFront },
     ]
   },
   {
@@ -210,18 +211,10 @@ export default function Sidebar() {
         ${sidebarOpen ? 'w-64' : 'w-[68px]'}`}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center px-4 border-b border-white/10 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shrink-0 shadow-lg shadow-red-500/30">
-            <Car className="w-5 h-5 text-white" />
-          </div>
-          {sidebarOpen && (
-            <div className="animate-fadeIn">
-              <h1 className="text-white font-bold text-base leading-tight">TOÀN TRUNG</h1>
-              <p className="text-gray-500 text-[10px] uppercase tracking-widest">Administrator</p>
-            </div>
-          )}
-        </div>
+      <div className="flex h-16 shrink-0 items-center justify-center border-b border-white/10">
+        <Link href="/" aria-label="Về trang tổng quan" className="flex h-full w-full items-center justify-center overflow-hidden">
+          <NextImage src="/images/logo-gold.png" alt="Toàn Trung" width={1600} height={640} sizes={sidebarOpen ? '192px' : '84px'} className={`h-auto max-w-none shrink-0 ${sidebarOpen ? 'w-48' : 'w-[84px]'}`} />
+        </Link>
       </div>
 
       {/* Menu */}

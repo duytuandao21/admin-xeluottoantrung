@@ -48,9 +48,8 @@ export default function LegacyCollectionPage() {
     ...(config.kind === 'link' ? [{ name: 'link', label: 'Liên kết', type: 'text' as const, placeholder: 'https://... hoặc /duong-dan' }] : []),
     ...(config.kind === 'color' ? [{ name: 'colorCode', label: 'Mã màu', type: 'color' as const }] : []),
     ...(pathname === '/thiet-lap/nut-goi' ? [{ name: 'phone', label: 'Số điện thoại', type: 'tel' as const, required: true, placeholder: 'VD: 0912345678 hoặc +84912345678' }] : []),
-    ...(config.description ? [{ name: 'description', label: 'Nội dung', type: 'textarea' as const }] : []),
+    ...(config.description ? [{ name: 'description', label: 'Nội dung', type: 'richtext' as const }] : []),
     ...(config.featured ? [{ name: 'featured', label: 'Nổi bật', type: 'checkbox' as const }] : []),
-    { name: 'order', label: 'Thứ tự', type: 'number' as const, min: 0 },
     { name: 'status', label: 'Hiển thị', type: 'select' as const, defaultValue: 'active', options: [{ value: 'active', label: 'Có' }, { value: 'inactive', label: 'Không' }] },
   ];
   return <CrudPage title={config.title} data={data} columns={columns} formFields={formFields} searchPlaceholder="Tìm kiếm..." searchFields={['title', 'link', 'phone']} nameField="title" />;

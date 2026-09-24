@@ -9,11 +9,14 @@ import { toast } from 'sonner';
 import ImageUpload from '@/components/ImageUpload';
 import ColorCodeInput from '@/components/ColorCodeInput';
 import { isVietnamesePhone, normalizeVietnamesePhone } from '@/lib/phone';
+import { formatDate, parseDateInput } from '@/lib/date';
+import RichTextEditor from '@/components/RichTextEditor';
+import { hasRichTextContent, sanitizeRichText } from '@/lib/rich-text';
 
 interface FieldConfig {
   name: string;
   label: string;
-  type?: 'text' | 'number' | 'textarea' | 'select' | 'color' | 'image' | 'url' | 'email' | 'date' | 'checkbox' | 'tel';
+  type?: 'text' | 'number' | 'textarea' | 'richtext' | 'select' | 'color' | 'image' | 'url' | 'email' | 'date' | 'checkbox' | 'tel';
   required?: boolean;
   placeholder?: string;
   options?: { value: string; label: string }[];
@@ -43,6 +46,10 @@ export default function CrudPage<T extends Record<string, unknown>>({
   const [editItem, setEditItem] = useState<T | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [deleteItem, setDeleteItem] = useState<T | null>(null);
+  const [slugPreview, setSlugPreview] = useState('');
+  const editableFields = formFields.filter(field => field.name !== 'order' && field.name !== idField);
+  const hasSlug = editableFields.some(field => field.name === 'slug');
+  const slugSourceField = editableFields.some(field => field.name === nameField) ? nameField : 'title';
 
   const handleDelete = () => {
     if (deleteItem) {
@@ -57,13 +64,19 @@ export default function CrudPage<T extends Record<string, unknown>>({
     const form = new FormData(e.currentTarget);
     const formDataObj: Record<string, unknown> = {};
     try {
-      for (const field of formFields) {
+      for (const field of editableFields) {
         const val = form.get(field.name);
         if (field.type === 'image') {
           if (val instanceof File && val.size) formDataObj[field.name] = await readImage(val);
           else formDataObj[field.name] = form.has(`${field.name}__remove`) ? '' : editItem?.[field.name] || '';
         } else if (field.type === 'checkbox') {
           formDataObj[field.name] = form.has(field.name);
+        } else if (field.type === 'richtext') {
+          const html = sanitizeRichText(String(val || ''));
+          if (field.required && !hasRichTextContent(html)) throw new Error(`Vui lòng nhập ${field.label.toLowerCase()}.`);
+          formDataObj[field.name] = html;
+        } else if (field.type === 'date') {
+          formDataObj[field.name] = parseDateInput(String(val || ''));
         } else if (field.type === 'tel') {
           const phone = String(val || '');
           if (phone || field.required) {
@@ -71,7 +84,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
             formDataObj[field.name] = normalizeVietnamesePhone(phone);
           } else formDataObj[field.name] = '';
         } else if (field.type === 'number' || field.name.endsWith('Id')) {
-          const number = val === '' || val === null ? (field.name === 'order' ? data.length + 1 : 0) : Number(val);
+          const number = val === '' || val === null ? 0 : Number(val);
           if (field.name === 'rating' && (!Number.isInteger(number) || number < 1 || number > 5)) throw new Error('Đánh giá phải là số nguyên từ 1 đến 5.');
           formDataObj[field.name] = number;
         } else {
@@ -83,8 +96,12 @@ export default function CrudPage<T extends Record<string, unknown>>({
       return;
     }
 
-    if (formFields.some(f => f.name === 'slug') && !formDataObj.slug) {
-      formDataObj.slug = slugify(String(formDataObj[nameField] || formDataObj.title || ''));
+    if (hasSlug) {
+      formDataObj.slug = slugify(String(formDataObj[slugSourceField] || ''));
+      if (!formDataObj.slug) {
+        toast.error('Tên hoặc tiêu đề cần có chữ hay số để tạo slug.');
+        return;
+      }
     }
 
     if (editItem) {
@@ -96,7 +113,8 @@ export default function CrudPage<T extends Record<string, unknown>>({
       const maxId = data.length > 0 ? Math.max(...data.map(d => Number(d[idField]) || 0)) : 0;
       const today = new Date().toISOString().split('T')[0];
       const timestamps = Object.hasOwn(initialData[0] || {}, 'createdAt') ? { createdAt: today, updatedAt: today } : {};
-      const newItem = { status: 'active', order: data.length + 1, ...timestamps, ...formDataObj, [idField]: maxId + 1 } as unknown as T;
+      const nextOrder = Math.max(0, ...data.map(item => Number(item.order) || 0)) + 1;
+      const newItem = { status: 'active', order: nextOrder, ...timestamps, ...formDataObj, [idField]: maxId + 1 } as unknown as T;
       setData(prev => [newItem, ...prev]);
       toast.success('Đã thêm mới thành công!');
     }
@@ -108,7 +126,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
   const toggleBoolean = (item: T, field: string) => {
     setData(previous => previous.map(current => current[idField] === item[idField] ? { ...current, [field]: !Boolean(current[field]) } : current));
   };
-  const listColumns = columns.map(column => ['featured', 'installment'].includes(column.key) ? {
+  const listColumns = columns.filter(column => column.key !== 'order' || column.label === 'STT').map(column => ['featured', 'installment'].includes(column.key) ? {
     ...column,
     render: (item: T) => <button type="button" role="switch" aria-checked={Boolean(item[column.key])} aria-label={`${column.label}: ${Boolean(item[column.key]) ? 'Bật' : 'Tắt'}`} onClick={() => toggleBoolean(item, column.key)} className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${item[column.key] ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-600'}`}><span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${item[column.key] ? 'translate-x-6' : 'translate-x-1'}`} /></button>,
   } : column);
@@ -116,7 +134,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
   return (
     <div className="space-y-6">
       {!isOpen && <><PageHeader title={title} subtitle={subtitle || `${data.length} mục`} actions={
-        <Button size="sm" onClick={() => setShowAdd(true)}><Plus className="w-4 h-4" /> Thêm mới</Button>
+        <Button size="sm" onClick={() => { setSlugPreview(''); setShowAdd(true); }}><Plus className="w-4 h-4" /> Thêm mới</Button>
       } />
 
       <DataTable
@@ -124,7 +142,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
         data={data}
         searchPlaceholder={searchPlaceholder}
         searchFields={searchFields}
-        onEdit={(item) => setEditItem(item as T)}
+        onEdit={(item) => { setSlugPreview(slugify(String(item[slugSourceField] || ''))); setEditItem(item as T); }}
         onDelete={(item) => setDeleteItem(item as T)}
       /></>}
 
@@ -132,9 +150,11 @@ export default function CrudPage<T extends Record<string, unknown>>({
         <form key={editItem ? String(editItem[idField]) : 'new'} onSubmit={handleSave} className="space-y-7">
           <div className="border-b border-[var(--border-color)] pb-5"><h2 className="text-xl font-semibold">Thông tin {title.toLowerCase()}</h2><p className="mt-1 text-sm text-[var(--muted-fg)]">Các trường có dấu * là bắt buộc.</p></div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
-            {formFields.map(field => (
-              <div key={field.name} className={field.type === 'textarea' || field.type === 'image' ? 'lg:col-span-2' : ''}><FormField label={field.label} required={field.required}>
-                {field.type === 'textarea' ? (
+            {editableFields.map(field => (
+              <div key={field.name} className={field.type === 'textarea' || field.type === 'richtext' || field.type === 'image' ? 'lg:col-span-2' : ''}><FormField label={field.label} required={field.required}>
+                {field.type === 'richtext' ? (
+                  <RichTextEditor name={field.name} defaultValue={editItem ? String(editItem[field.name] ?? '') : String(field.defaultValue ?? '')} placeholder={field.placeholder} required={field.required} />
+                ) : field.type === 'textarea' ? (
                   <Textarea name={field.name} defaultValue={editItem ? String(editItem[field.name] ?? '') : String(field.defaultValue ?? '')} rows={3} placeholder={field.placeholder} required={field.required} />
                 ) : field.type === 'select' ? (
                   <Select name={field.name} defaultValue={editItem ? String(editItem[field.name] ?? '') : String(field.defaultValue ?? (field.name === 'status' ? field.options?.[0]?.value || '' : ''))} required={field.required}>
@@ -145,10 +165,14 @@ export default function CrudPage<T extends Record<string, unknown>>({
                   <ImageUpload name={field.name} existing={String(editItem?.[field.name] || '')} required={field.required} />
                 ) : field.type === 'color' ? (
                   <ColorCodeInput name={field.name} defaultValue={String(editItem?.[field.name] || field.defaultValue || '')} colorName={String(editItem?.title || '')} />
+                ) : field.type === 'date' ? (
+                  <Input name={field.name} type="text" defaultValue={formatDate(String(editItem?.[field.name] ?? field.defaultValue ?? ''))} placeholder="dd/mm/yyyy" inputMode="numeric" maxLength={10} pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" required={field.required} />
+                ) : field.name === 'slug' ? (
+                  <Input value={slugPreview} readOnly aria-label="Slug tự tạo" placeholder="Tự tạo từ tên hoặc tiêu đề" className="cursor-default bg-[var(--muted)] text-[var(--muted-fg)]" />
                 ) : field.type === 'checkbox' ? (
                   <input name={field.name} type="checkbox" defaultChecked={Boolean(editItem ? editItem[field.name] : field.defaultValue)} className="h-4 w-4 accent-red-600" />
                 ) : (
-                  <><Input name={field.name} type={field.type || 'text'} defaultValue={editItem ? String(editItem[field.name] ?? '') : String(field.defaultValue ?? '')} placeholder={field.placeholder} required={field.required} min={field.name === 'rating' ? 1 : field.min} max={field.name === 'rating' ? 5 : field.max} step={field.name === 'rating' ? 1 : undefined} inputMode={field.type === 'tel' ? 'tel' : undefined} maxLength={field.type === 'tel' ? 20 : undefined} onBlur={field.type === 'tel' ? event => { event.currentTarget.value = normalizeVietnamesePhone(event.currentTarget.value); } : undefined} />{field.type === 'tel' && <p className="mt-2 text-sm text-[var(--muted-fg)]">Nhập số di động (03, 05, 07, 08, 09) hoặc số điện thoại bàn; chấp nhận +84.</p>}</>
+                  <><Input name={field.name} type={field.type || 'text'} defaultValue={editItem ? String(editItem[field.name] ?? '') : String(field.defaultValue ?? '')} placeholder={field.placeholder} required={field.required} min={field.name === 'rating' ? 1 : field.min} max={field.name === 'rating' ? 5 : field.max} step={field.name === 'rating' ? 1 : undefined} inputMode={field.type === 'tel' ? 'tel' : undefined} maxLength={field.type === 'tel' ? 20 : undefined} onChange={hasSlug && field.name === slugSourceField ? event => setSlugPreview(slugify(event.currentTarget.value)) : undefined} onBlur={field.type === 'tel' ? event => { event.currentTarget.value = normalizeVietnamesePhone(event.currentTarget.value); } : undefined} />{field.type === 'tel' && <p className="mt-2 text-sm text-[var(--muted-fg)]">Nhập số di động (03, 05, 07, 08, 09) hoặc số điện thoại bàn; chấp nhận +84.</p>}</>
                 )}
               </FormField></div>
             ))}

@@ -3,6 +3,7 @@
 import { useState, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, Trash2, Edit2, Eye } from 'lucide-react';
+import { formatDate } from '@/lib/date';
 
 // --- StatusBadge ---
 export function StatusBadge({ status, labels }: { status: string; labels?: Record<string, string> }) {
@@ -194,7 +195,7 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
             <tr className="border-b border-[var(--border-color)]">
               {columns.map(col => (
                 <th key={col.key} className="whitespace-nowrap px-3 py-3.5 text-left text-sm font-semibold text-[var(--muted-fg)] uppercase tracking-wide" style={col.width ? { width: col.width } : {}}>
-                  {col.sortable ? (
+                  {col.sortable && col.label !== 'STT' ? (
                     <button onClick={() => handleSort(col.key)} className="flex items-center gap-1 hover:text-[var(--foreground)] transition-colors">
                       {col.label}
                       {sortKey === col.key ? (sortDir === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5 opacity-30" />}
@@ -219,7 +220,7 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
                 <tr key={i} className="border-b border-[var(--border-color)] last:border-0">
                   {columns.map(col => (
                     <td key={col.key} className="whitespace-nowrap px-3 py-3.5 text-[15px]">
-                      {col.render ? col.render(item) : String(item[col.key] ?? '')}
+                      {col.label === 'STT' ? (currentPage - 1) * perPage + i + 1 : col.render ? col.render(item) : ['createdAt', 'updatedAt', 'deadline', 'lastLogin'].includes(col.key) ? formatDate(String(item[col.key] ?? '')) : String(item[col.key] ?? '')}
                     </td>
                   ))}
                   {(onEdit || onDelete || onView || actions) && (

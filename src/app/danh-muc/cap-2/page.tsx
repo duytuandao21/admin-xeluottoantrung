@@ -11,6 +11,7 @@ export default function Category2Page() {
   const [products] = useLocalStore<Product[]>('/san-pham', mockProducts);
   return (
     <CrudPage
+      storageKey="/danh-muc/cap-2"
       title="Dòng xe"
       subtitle="Quản lý dòng xe"
       data={mockSubCategories as unknown as Record<string, unknown>[]}
@@ -20,7 +21,6 @@ export default function Category2Page() {
         { key: 'parentId', label: 'Hãng xe', render: (item) => { const parent = categories.find(c => c.id === Number(item.parentId)); return <span className="text-[var(--muted-fg)]">{parent?.name || '—'}</span>; } },
         { key: 'slug', label: 'Slug' },
         { key: 'count', label: 'Số xe', render: (item) => <span className="font-semibold text-red-600">{products.filter(product => product.model === item.name).length}</span> },
-        { key: 'order', label: 'Thứ tự', sortable: true },
         { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },
       ]}
       formFields={[
@@ -28,7 +28,6 @@ export default function Category2Page() {
         { name: 'image', label: 'Hình dòng xe', type: 'image' },
         { name: 'parentId', label: 'Hãng xe', type: 'select', required: true, options: categories.filter(c => c.status === 'active').map(c => ({ value: String(c.id), label: c.name })) },
         { name: 'slug', label: 'Slug', placeholder: 'VD: camry' },
-        { name: 'order', label: 'Thứ tự', type: 'number', placeholder: '1' },
         { name: 'status', label: 'Trạng thái', type: 'select', options: [{ value: 'active', label: 'Hoạt động' }, { value: 'inactive', label: 'Ẩn' }] },
       ]}
       searchPlaceholder="Tìm kiếm dòng xe..."

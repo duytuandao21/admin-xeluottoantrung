@@ -13,8 +13,8 @@ export default function TuyenDungPage() {
   ]} formFields={[
     { name: 'title', label: 'Vị trí tuyển dụng', required: true, placeholder: 'VD: Nhân viên kinh doanh' },
     { name: 'image', label: 'Hình tuyển dụng', type: 'image' },
-    { name: 'description', label: 'Mô tả công việc', type: 'textarea', required: true },
-    { name: 'requirements', label: 'Yêu cầu', type: 'textarea', required: true },
+    { name: 'description', label: 'Mô tả công việc', type: 'richtext', required: true },
+    { name: 'requirements', label: 'Yêu cầu', type: 'richtext', required: true },
     { name: 'salary', label: 'Mức lương', placeholder: 'VD: 10-20 triệu' },
     { name: 'location', label: 'Địa điểm', placeholder: 'VD: TP.HCM' },
     { name: 'deadline', label: 'Hạn nộp', type: 'date' },

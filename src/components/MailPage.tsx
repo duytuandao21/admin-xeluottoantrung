@@ -6,6 +6,7 @@ import { useLocalStore } from '@/lib/local-store';
 import { CheckCircle, Phone, User, Calendar, Car } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Mail } from '@/lib/types';
+import { formatDate } from '@/lib/date';
 
 function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string; subtitle: string }) {
   const [mails, setMails] = useLocalStore<Mail[]>(`/thu/${type}`, mockMails.filter(m => m.type === type));
@@ -87,7 +88,7 @@ function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string
             </div>
             <div className="grid grid-cols-2 gap-3">
               <InfoCard icon={<Phone className="w-4 h-4" />} label="Số điện thoại" value={viewItem.phone} />
-              <InfoCard icon={<Calendar className="w-4 h-4" />} label="Ngày gửi" value={viewItem.createdAt} />
+              <InfoCard icon={<Calendar className="w-4 h-4" />} label="Ngày gửi" value={formatDate(viewItem.createdAt)} />
               {viewItem.carName && <InfoCard icon={<Car className="w-4 h-4" />} label="Xe" value={viewItem.carName} />}
               {viewItem.currentCar && <InfoCard icon={<Car className="w-4 h-4" />} label="Xe hiện tại" value={viewItem.currentCar} />}
               {viewItem.desiredCar && <InfoCard icon={<Car className="w-4 h-4" />} label="Xe muốn đổi" value={viewItem.desiredCar} />}

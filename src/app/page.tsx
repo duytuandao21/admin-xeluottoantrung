@@ -7,6 +7,8 @@ import type { Product, Mail as MailRecord, Customer } from '@/lib/types';
 import { Car, Mail, Eye, Users, TrendingUp, Clock, ArrowUpRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Link from 'next/link';
+import ProductThumbnail from '@/components/ProductThumbnail';
+import { formatDate } from '@/lib/date';
 
 export default function DashboardPage() {
   const [products] = useLocalStore<Product[]>('/san-pham', mockProducts);
@@ -84,7 +86,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-1 text-xs text-[var(--muted-fg)] shrink-0">
                   <Clock className="w-3 h-3" />
-                  {mail.createdAt.split(' ')[1] || 'Hôm nay'}
+                  {formatDate(mail.createdAt)}
                 </div>
               </div>
             ))}
@@ -116,9 +118,7 @@ export default function DashboardPage() {
                 <tr key={product.id} className="border-b border-[var(--border-color)] last:border-0 hover:bg-[var(--muted)] transition-colors">
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-[var(--muted)] flex items-center justify-center shrink-0">
-                        <Car className="w-5 h-5 text-[var(--muted-fg)]" />
-                      </div>
+                      <ProductThumbnail images={product.images} size="sm" />
                       <span className="text-sm font-medium">{product.name}</span>
                     </div>
                   </td>

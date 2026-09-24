@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { PageHeader, DataTable, StatusBadge, Modal, ConfirmDialog, FormField, Input, Select, Textarea, Button, type Column } from '@/components/ui';
+import { PageHeader, DataTable, StatusBadge, Modal, ConfirmDialog, FormField, Input, Select, Button, type Column } from '@/components/ui';
 import { mockProducts, mockCategories, mockSubCategories, formatPrice, formatNumber } from '@/lib/mock-data';
 import { useLocalStore, readImage, slugify } from '@/lib/local-store';
 import { Plus, Download, Car, Star, CreditCard, Sparkles } from 'lucide-react';
@@ -9,6 +9,10 @@ import { toast } from 'sonner';
 import type { Product, Category } from '@/lib/types';
 import ImageUpload from '@/components/ImageUpload';
 import PriceInput from '@/components/PriceInput';
+import ProductThumbnail from '@/components/ProductThumbnail';
+import { formatDate } from '@/lib/date';
+import RichTextEditor, { RichTextContent } from '@/components/RichTextEditor';
+import { sanitizeRichText } from '@/lib/rich-text';
 
 export default function ProductsPage() {
   const [products, setProducts] = useLocalStore<Product[]>('/san-pham', mockProducts);
@@ -21,6 +25,7 @@ export default function ProductsPage() {
   const [brand, setBrand] = useState('');
   const [filterBrand, setFilterBrand] = useState('');
   const [filterModel, setFilterModel] = useState('');
+  const [slugPreview, setSlugPreview] = useState('');
   const visibleProducts = products.filter(product => (!filterBrand || product.brand === filterBrand) && (!filterModel || product.model === filterModel));
 
   const columns = [
@@ -28,9 +33,7 @@ export default function ProductsPage() {
     {
       key: 'name', label: 'Tên xe', sortable: true, render: (item: Product) => (
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-[var(--muted)] flex items-center justify-center shrink-0 overflow-hidden">
-            {item.images?.[0] && item.images[0] !== '/placeholder-car.jpg' ? <img src={item.images[0]} alt="" className="w-full h-full object-cover" /> : <Car className="w-6 h-6 text-[var(--muted-fg)]" />}
-          </div>
+          <ProductThumbnail images={item.images} />
           <div className="min-w-0">
             <p className="font-medium text-sm truncate">{item.name}</p>
             <p className="text-xs text-[var(--muted-fg)]">{item.brand} • {item.year}</p>
@@ -83,10 +86,14 @@ export default function ProductsPage() {
       originalPrice: Number(String(data.originalPrice || '').replace(/\D/g, '')), mileage: Number(String(data.mileage || '').replace(/\D/g, '')),
       transmission: String(data.transmission), fuel: String(data.fuel), color: String(data.color || ''),
       licensePlate: String(data.licensePlate || ''), condition: String(data.condition || ''),
-      status: String(data.status) as Product['status'], description: String(data.description || ''),
+      status: String(data.status) as Product['status'], description: sanitizeRichText(String(data.description || '')),
       featured: form.has('featured'), installment: form.has('installment'), newArrival: form.has('newArrival'), images,
       updatedAt: now,
     };
+    if (!fields.slug) {
+      toast.error('Tên xe cần có chữ hay số để tạo slug.');
+      return;
+    }
 
     if (editItem) {
       setProducts(prev => prev.map(p => p.id === editItem.id ? { ...p, ...fields } : p));
@@ -123,7 +130,7 @@ export default function ProductsPage() {
         actions={
           <>
             <Button variant="secondary" size="sm" onClick={exportCsv}><Download className="w-4 h-4" /> Xuất CSV</Button>
-            <Button size="sm" onClick={() => { setBrand(''); setShowAdd(true); }}><Plus className="w-4 h-4" /> Thêm xe</Button>
+            <Button size="sm" onClick={() => { setBrand(''); setSlugPreview(''); setShowAdd(true); }}><Plus className="w-4 h-4" /> Thêm xe</Button>
           </>
         }
       />
@@ -137,7 +144,7 @@ export default function ProductsPage() {
         data={visibleProducts as unknown as Record<string, unknown>[]}
         searchPlaceholder="Tìm kiếm theo tên xe, hãng..."
         searchFields={['name', 'brand', 'model']}
-        onEdit={(item) => { const product = item as unknown as Product; setBrand(product.brand); setEditItem(product); }}
+        onEdit={(item) => { const product = item as unknown as Product; setBrand(product.brand); setSlugPreview(slugify(product.name)); setEditItem(product); }}
         onDelete={(item) => setDeleteItem(item as unknown as Product)}
         onView={(item) => setViewItem(item as unknown as Product)}
       />
@@ -149,7 +156,10 @@ export default function ProductsPage() {
           <div><h2 className="text-xl font-semibold">Thông tin xe</h2><p className="mt-1 text-sm text-[var(--muted-fg)]">Nhập thông tin cơ bản, giá bán và trạng thái của xe.</p></div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
             <FormField label="Tên xe" required>
-              <Input name="name" defaultValue={formData.name} required placeholder="VD: Toyota Camry 2.5Q" />
+              <Input name="name" defaultValue={formData.name} onChange={event => setSlugPreview(slugify(event.currentTarget.value))} required placeholder="VD: Toyota Camry 2.5Q" />
+            </FormField>
+            <FormField label="Slug">
+              <Input value={slugPreview} readOnly aria-label="Slug tự tạo" placeholder="Tự tạo từ tên xe" className="cursor-default bg-[var(--muted)] text-[var(--muted-fg)]" />
             </FormField>
             <FormField label="Hãng xe" required>
               <Select name="brand" defaultValue={formData.brand} onChange={event => setBrand(event.target.value)} required>
@@ -213,7 +223,7 @@ export default function ProductsPage() {
             </div>
           </div>
           <FormField label="Mô tả">
-            <Textarea name="description" defaultValue={formData.description} rows={4} placeholder="Mô tả chi tiết về xe..." />
+            <RichTextEditor name="description" defaultValue={formData.description} placeholder="Mô tả chi tiết về xe..." />
           </FormField>
           <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
             <Button type="button" variant="secondary" onClick={() => { setEditItem(null); setShowAdd(false); }}>Hủy</Button>
@@ -245,8 +255,8 @@ export default function ProductsPage() {
                 ['Tình trạng', viewItem.condition],
                 ['Nổi bật', viewItem.featured ? 'Có' : 'Không'],
                 ['Trả góp', viewItem.installment ? 'Có' : 'Không'],
-                ['Ngày tạo', viewItem.createdAt],
-                ['Cập nhật', viewItem.updatedAt],
+                ['Ngày tạo', formatDate(viewItem.createdAt)],
+                ['Cập nhật', formatDate(viewItem.updatedAt)],
               ].map(([label, val]) => (
                 <div key={label} className="p-5 rounded-xl bg-[var(--muted)]">
                   <p className="text-sm text-[var(--muted-fg)] mb-1">{label}</p>
@@ -254,7 +264,7 @@ export default function ProductsPage() {
                 </div>
               ))}
             </div>
-            {viewItem.description && <div className="p-3 rounded-xl bg-[var(--muted)]"><p className="text-xs text-[var(--muted-fg)] mb-1">Mô tả</p><p className="text-sm whitespace-pre-wrap">{viewItem.description}</p></div>}
+            {viewItem.description && <div className="p-3 rounded-xl bg-[var(--muted)]"><p className="text-xs text-[var(--muted-fg)] mb-1">Mô tả</p><RichTextContent html={viewItem.description} /></div>}
           </div>
         )}
       </Modal>

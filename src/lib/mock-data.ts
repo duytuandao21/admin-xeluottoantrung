@@ -199,7 +199,4 @@ export function formatNumber(num: number): string {
 }
 
 // Helper: format date
-export function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
+export { formatDate } from './date';

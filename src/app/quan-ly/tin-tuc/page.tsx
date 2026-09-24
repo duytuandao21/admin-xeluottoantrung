@@ -17,7 +17,7 @@ export default function TinTucPage() {
     { name: 'slug', label: 'Slug' },
     { name: 'category', label: 'Danh mục', type: 'select', required: true, options: [{ value: 'Tin tức', label: 'Tin tức' }, { value: 'Tư vấn', label: 'Tư vấn' }, { value: 'Kinh nghiệm', label: 'Kinh nghiệm' }, { value: 'Đánh giá xe', label: 'Đánh giá xe' }] },
     { name: 'excerpt', label: 'Mô tả ngắn', type: 'textarea', placeholder: 'Mô tả ngắn bài viết...' },
-    { name: 'content', label: 'Nội dung', type: 'textarea', required: true, placeholder: 'Nội dung bài viết...' },
+    { name: 'content', label: 'Nội dung bài viết', type: 'richtext', required: true, placeholder: 'Nội dung bài viết...' },
     { name: 'featured', label: 'Nổi bật', type: 'checkbox' },
     { name: 'status', label: 'Trạng thái', type: 'select', options: [{ value: 'published', label: 'Đã đăng' }, { value: 'draft', label: 'Nháp' }] },
   ]} searchPlaceholder="Tìm kiếm bài viết..." searchFields={['title', 'category']} nameField="title" />;

@@ -13,7 +13,6 @@ export default function BranchCategoryPage() {
     { key: 'status', label: 'Hiển thị', render: item => <StatusBadge status={String(item.status)} /> },
   ]} formFields={[
     { name: 'name', label: 'Tiêu đề', required: true },
-    { name: 'order', label: 'Thứ tự', type: 'number', min: 0 },
     { name: 'status', label: 'Hiển thị', type: 'select', defaultValue: 'active', options: [{ value: 'active', label: 'Có' }, { value: 'inactive', label: 'Không' }] },
   ]} searchPlaceholder="Tìm danh mục chi nhánh..." searchFields={['name']} />;
 }

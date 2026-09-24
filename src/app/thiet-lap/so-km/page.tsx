@@ -7,12 +7,10 @@ export default function Page() {
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'name', label: 'Khoảng số km', sortable: true, render: (item) => <span className="font-medium">{String(item.name)}</span> },
     { key: 'slug', label: 'Slug' },
-    { key: 'order', label: 'Thứ tự', sortable: true },
     { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },
   ]} formFields={[
     { name: 'name', label: 'Khoảng số km', required: true },
     { name: 'slug', label: 'Slug' },
-    { name: 'order', label: 'Thứ tự', type: 'number' },
     { name: 'status', label: 'Trạng thái', type: 'select', options: [{ value: 'active', label: 'Hoạt động' }, { value: 'inactive', label: 'Ẩn' }] },
   ]} searchPlaceholder="Tìm kiếm..." searchFields={['name']} />;
 }

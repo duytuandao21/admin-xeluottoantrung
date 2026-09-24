@@ -2,6 +2,7 @@
 import CrudPage from '@/components/CrudPage';
 import { mockCustomers } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
+import { formatDate } from '@/lib/date';
 export default function KhachHangPage() {
   return <CrudPage title="Tài khoản khách hàng" subtitle="Quản lý tài khoản khách hàng" data={mockCustomers as unknown as Record<string, unknown>[]} columns={[
     { key: 'id', label: 'STT', width: '60px' },
@@ -14,7 +15,7 @@ export default function KhachHangPage() {
     { key: 'email', label: 'Email', render: (item) => <span className="text-sm text-[var(--muted-fg)]">{String(item.email)}</span> },
     { key: 'phone', label: 'SĐT' },
     { key: 'createdAt', label: 'Ngày tạo', sortable: true },
-    { key: 'lastLogin', label: 'Đăng nhập cuối', render: (item) => <span className="text-sm text-[var(--muted-fg)]">{String(item.lastLogin || 'Chưa đăng nhập')}</span> },
+    { key: 'lastLogin', label: 'Đăng nhập cuối', render: (item) => <span className="text-sm text-[var(--muted-fg)]">{item.lastLogin ? formatDate(String(item.lastLogin)) : 'Chưa đăng nhập'}</span> },
     { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },
   ]} formFields={[
     { name: 'name', label: 'Họ tên', required: true },
