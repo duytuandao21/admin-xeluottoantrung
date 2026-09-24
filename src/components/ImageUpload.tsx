@@ -14,8 +14,6 @@ interface ImageUploadProps {
   hint?: string;
 }
 
-const MAX_IMAGE_SIZE = 1024 * 1024;
-
 export default function ImageUpload({ name, existing, multiple = false, maxFiles = 5, required = false, hint }: ImageUploadProps) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,11 +45,6 @@ export default function ImageUpload({ name, existing, multiple = false, maxFiles
     if (selected.some(file => !file.type.startsWith('image/'))) {
       syncInput(previews.map(preview => preview.file));
       setError('Vui lòng chọn tệp hình ảnh.');
-      return;
-    }
-    if (selected.some(file => file.size > MAX_IMAGE_SIZE)) {
-      syncInput(previews.map(preview => preview.file));
-      setError('Mỗi ảnh phải nhỏ hơn 1 MB.');
       return;
     }
     const files = multiple ? [...previews.map(preview => preview.file), ...selected] : selected.slice(0, 1);
@@ -106,7 +99,7 @@ export default function ImageUpload({ name, existing, multiple = false, maxFiles
       >
         <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-950/40"><ImagePlus className="h-6 w-6" aria-hidden="true" /></span>
         <span className="text-base font-semibold text-[var(--foreground)]">Chọn ảnh hoặc kéo thả vào đây</span>
-        <span className="mt-1 text-sm text-[var(--muted-fg)]">{multiple ? `Có thể chọn nhiều ảnh (tối đa ${maxFiles})` : 'PNG, JPG, WebP hoặc ảnh khác'} · Dưới 1 MB/ảnh</span>
+        <span className="mt-1 text-sm text-[var(--muted-fg)]">{multiple ? `Có thể chọn nhiều ảnh (tối đa ${maxFiles})` : 'PNG, JPG, WebP hoặc ảnh khác'}</span>
       </label>
       {hint && <p className="text-xs text-[var(--muted-fg)]">{hint}</p>}
       {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
@@ -122,7 +115,7 @@ export default function ImageUpload({ name, existing, multiple = false, maxFiles
           {previews.map((preview, index) => (
             <div key={preview.url} className="flex min-w-0 items-center gap-3 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] p-2">
               <img src={preview.url} alt={`Xem trước ${preview.file.name}`} className="h-24 w-28 shrink-0 rounded-lg bg-[var(--muted)] object-contain" />
-              <span className="min-w-0 flex-1 truncate text-base" title={preview.file.name}>{preview.file.name}<span className="block text-sm text-[var(--muted-fg)]">{(preview.file.size / 1024).toFixed(0)} KB</span></span>
+              <span className="min-w-0 flex-1 truncate text-base" title={preview.file.name}>{preview.file.name}<span className="block text-sm text-[var(--muted-fg)]">{preview.file.size >= 1024 * 1024 ? `${(preview.file.size / (1024 * 1024)).toFixed(1)} MB` : `${(preview.file.size / 1024).toFixed(0)} KB`}</span></span>
               <button type="button" onClick={() => removeSelected(index)} aria-label={`Bỏ ảnh ${preview.file.name}`} className="rounded-lg p-2 text-[var(--muted-fg)] hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20"><X className="h-4 w-4" /></button>
             </div>
           ))}

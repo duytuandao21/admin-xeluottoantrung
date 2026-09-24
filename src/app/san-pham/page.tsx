@@ -2,31 +2,59 @@
 
 import { useState } from 'react';
 import { PageHeader, DataTable, StatusBadge, Modal, ConfirmDialog, FormField, Input, Select, Button, type Column } from '@/components/ui';
-import { mockProducts, mockCategories, mockSubCategories, formatPrice, formatNumber } from '@/lib/mock-data';
+import { mockProducts, mockCategories, mockSubCategories, mockVersions, mockBodyStyles, mockBranches, getModelBodyStyleId, formatPrice, formatNumber } from '@/lib/mock-data';
 import { useLocalStore, readImage, slugify } from '@/lib/local-store';
-import { Plus, Download, Car, Star, CreditCard, Sparkles } from 'lucide-react';
+import { Plus, Download, Car, Star, CreditCard, Sparkles, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Product, Category } from '@/lib/types';
+import type { Product, Category, CarAttribute, Branch } from '@/lib/types';
 import ImageUpload from '@/components/ImageUpload';
 import PriceInput from '@/components/PriceInput';
 import ProductThumbnail from '@/components/ProductThumbnail';
 import { formatDate } from '@/lib/date';
 import RichTextEditor, { RichTextContent } from '@/components/RichTextEditor';
 import { sanitizeRichText } from '@/lib/rich-text';
+import { initialManagedCarColors, resolveCarColorCode, type ManagedCarColor } from '@/lib/car-colors';
+import Link from 'next/link';
 
 export default function ProductsPage() {
   const [products, setProducts] = useLocalStore<Product[]>('/san-pham', mockProducts);
   const [categories] = useLocalStore<Category[]>('/danh-muc/cap-1', mockCategories);
   const [subCategories] = useLocalStore<Category[]>('/danh-muc/cap-2', mockSubCategories);
+  const [versions] = useLocalStore<Category[]>('/san-pham/phien-ban', mockVersions);
+  const [bodyStyles] = useLocalStore<CarAttribute[]>('/quan-ly/kieu-dang', mockBodyStyles);
+  const [managedColors] = useLocalStore<ManagedCarColor[]>('/thiet-lap/mau-sac', initialManagedCarColors);
+  const [branches] = useLocalStore<Branch[]>('/quan-ly/chi-nhanh', mockBranches);
   const [editItem, setEditItem] = useState<Product | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [deleteItem, setDeleteItem] = useState<Product | null>(null);
   const [viewItem, setViewItem] = useState<Product | null>(null);
   const [brand, setBrand] = useState('');
+  const [model, setModel] = useState('');
+  const [version, setVersion] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
   const [filterBrand, setFilterBrand] = useState('');
   const [filterModel, setFilterModel] = useState('');
+  const [filterVersion, setFilterVersion] = useState('');
   const [slugPreview, setSlugPreview] = useState('');
-  const visibleProducts = products.filter(product => (!filterBrand || product.brand === filterBrand) && (!filterModel || product.model === filterModel));
+  const visibleProducts = products.filter(product => (!filterBrand || product.brand === filterBrand) && (!filterModel || product.model === filterModel) && (!filterVersion || product.version === filterVersion));
+  const selectedBrand = categories.find(category => category.name === brand);
+  const availableModels = subCategories.filter(category => category.parentId === selectedBrand?.id && (category.status === 'active' || (editItem?.brand === brand && editItem.model === category.name)));
+  const selectedModel = availableModels.find(category => category.name === model);
+  const selectedBodyStyle = bodyStyles.find(style => style.id === (selectedModel ? getModelBodyStyleId(selectedModel) : undefined));
+  const availableColors = managedColors.filter(color => color.status === 'active' || (editItem && color.title === editItem.color));
+  const colorPreview = managedColors.find(color => color.title === selectedColor);
+  const availableVersions = versions.filter(category => category.parentId === selectedModel?.id && (category.status === 'active' || (editItem?.brand === brand && editItem?.model === model && editItem?.version === category.name)));
+  const unavailableCurrentModel = Boolean(editItem && brand === editItem.brand && model === editItem.model && model && !availableModels.some(category => category.name === model));
+  const unavailableCurrentVersion = Boolean(editItem && brand === editItem.brand && model === editItem.model && version === editItem.version && version && !availableVersions.some(category => category.name === version));
+  const getProductBodyStyle = (product: Product) => {
+    const carBrand = categories.find(category => category.name === product.brand);
+    const carModel = subCategories.find(category => category.parentId === carBrand?.id && category.name === product.model);
+    return bodyStyles.find(style => style.id === (carModel ? getModelBodyStyleId(carModel) : undefined))?.name || '—';
+  };
+  const getProductBranchName = (product: Product) => product.branchId
+    ? branches.find(branch => branch.id === product.branchId)?.name || 'Chi nhánh không còn tồn tại'
+    : 'Chưa chọn';
+  const getProductListName = (product: Product) => [product.brand, product.model || product.name, product.version, product.year].filter(Boolean).join(' ');
 
   const columns = [
     { key: 'id', label: 'STT', width: '60px', sortable: true, render: (item: Product) => <span className="text-[var(--muted-fg)]">#{item.id}</span> },
@@ -34,14 +62,14 @@ export default function ProductsPage() {
       key: 'name', label: 'Tên xe', sortable: true, render: (item: Product) => (
         <div className="flex items-center gap-3">
           <ProductThumbnail images={item.images} />
-          <div className="min-w-0">
-            <p className="font-medium text-sm truncate">{item.name}</p>
-            <p className="text-xs text-[var(--muted-fg)]">{item.brand} • {item.year}</p>
+          <div className="min-w-0 max-w-[320px]">
+            <p className="truncate text-sm font-semibold" title={getProductListName(item)}>{getProductListName(item)}</p>
+            <p className="flex min-w-0 items-center gap-1 text-xs text-[var(--muted-fg)]" title={getProductBranchName(item)}><MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span className="truncate">{getProductBranchName(item)}</span></p>
           </div>
         </div>
       )
     },
-    { key: 'price', label: 'Giá bán', sortable: true, render: (item: Product) => <span className="font-semibold text-red-600">{formatPrice(item.price)}</span> },
+    { key: 'price', label: 'Giá bán', sortable: true, render: (item: Product) => <span className="font-semibold tabular-nums text-red-600">{formatPrice(item.price)}</span> },
     { key: 'mileage', label: 'Số km', sortable: true, render: (item: Product) => <span>{formatNumber(item.mileage)} km</span> },
     { key: 'transmission', label: 'Hộp số' },
     { key: 'status', label: 'Trạng thái', render: (item: Product) => <StatusBadge status={item.status} labels={{ active: 'Đang bán', inactive: 'Ẩn', deposit: 'Đã nhận cọc', sold: 'Đã bán' }} /> },
@@ -62,6 +90,28 @@ export default function ProductsPage() {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     const data = Object.fromEntries(form.entries());
+    const chosenBrand = categories.find(category => category.name === String(data.brand) && (category.status === 'active' || category.name === editItem?.brand));
+    const chosenModel = subCategories.find(category => category.parentId === chosenBrand?.id && category.name === String(data.model) && (category.status === 'active' || (editItem?.brand === chosenBrand?.name && editItem?.model === category.name)));
+    const chosenVersion = versions.find(category => category.parentId === chosenModel?.id && category.name === String(data.version) && (category.status === 'active' || (editItem?.brand === chosenBrand?.name && editItem?.model === chosenModel?.name && editItem?.version === category.name)));
+    if (!chosenBrand || !chosenModel || !chosenVersion) {
+      toast.error('Vui lòng chọn đúng hãng xe, dòng xe và phiên bản có sẵn.');
+      return;
+    }
+    if (!bodyStyles.some(style => style.id === getModelBodyStyleId(chosenModel))) {
+      toast.error('Dòng xe chưa có kiểu dáng hợp lệ. Vui lòng cập nhật kiểu dáng ở mục Dòng xe.');
+      return;
+    }
+    const chosenColor = managedColors.find(color => color.title === String(data.color) && (color.status === 'active' || color.title === editItem?.color));
+    if (!chosenColor) {
+      toast.error('Vui lòng chọn màu từ danh sách Quản lý màu sắc.');
+      return;
+    }
+    const branchId = String(data.branchId || '');
+    const chosenBranch = branches.find(branch => String(branch.id) === branchId && (branch.status === 'active' || branch.id === editItem?.branchId));
+    if (branchId && !chosenBranch) {
+      toast.error('Vui lòng chọn chi nhánh có trong danh sách.');
+      return;
+    }
     const currentImages = editItem?.images?.filter(image => image && image !== '/placeholder-car.jpg') || [];
     const removedGallery = new Set(form.getAll('gallery__removeIndex').map(index => Number(index)));
     const remainingGallery = currentImages.slice(1).filter((_, index) => !removedGallery.has(index));
@@ -73,7 +123,7 @@ export default function ProductsPage() {
       const cover = form.get('cover');
       if (cover instanceof File && cover.size) images = [await readImage(cover), ...remainingGallery];
       const gallery = form.getAll('gallery').filter((entry): entry is File => entry instanceof File && entry.size > 0);
-      if (images.length + gallery.length > 5) throw new Error('Mỗi xe chỉ được có tối đa 5 ảnh.');
+      if (images.length + gallery.length > 10) throw new Error('Mỗi xe chỉ được có tối đa 10 ảnh.');
       if (gallery.length) images = [...images, ...await Promise.all(gallery.map(readImage))];
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Không thể lưu ảnh.');
@@ -81,10 +131,11 @@ export default function ProductsPage() {
     }
     const now = new Date().toISOString().split('T')[0];
     const fields = {
-      name: String(data.name).trim(), brand: String(data.brand), model: String(data.model || ''),
+      name: String(data.name).trim(), brand: chosenBrand.name, model: chosenModel.name, version: chosenVersion.name,
       slug: slugify(String(data.name)), year: Number(data.year), price: Number(String(data.price).replace(/\D/g, '')),
       originalPrice: Number(String(data.originalPrice || '').replace(/\D/g, '')), mileage: Number(String(data.mileage || '').replace(/\D/g, '')),
-      transmission: String(data.transmission), fuel: String(data.fuel), color: String(data.color || ''),
+      transmission: String(data.transmission), fuel: String(data.fuel), color: chosenColor.title,
+      branchId: chosenBranch?.id,
       licensePlate: String(data.licensePlate || ''), condition: String(data.condition || ''),
       status: String(data.status) as Product['status'], description: sanitizeRichText(String(data.description || '')),
       featured: form.has('featured'), installment: form.has('installment'), newArrival: form.has('newArrival'), images,
@@ -114,7 +165,7 @@ export default function ProductsPage() {
   const formModal = showAdd || editItem;
   const formData = editItem || {} as Partial<Product>;
   const exportCsv = () => {
-    const rows = [['ID', 'Tên xe', 'Hãng', 'Dòng xe', 'Năm', 'Giá bán', 'Số km', 'Trạng thái'], ...products.map(p => [p.id, p.name, p.brand, p.model, p.year, p.price, p.mileage, p.status])];
+    const rows = [['ID', 'Tên xe', 'Hãng', 'Dòng xe', 'Phiên bản', 'Kiểu dáng', 'Chi nhánh', 'Năm', 'Giá bán', 'Số km', 'Trạng thái'], ...products.map(p => [p.id, p.name, p.brand, p.model, p.version || '', getProductBodyStyle(p), p.branchId ? getProductBranchName(p) : '', p.year, p.price, p.mileage, p.status])];
     const csv = '\uFEFF' + rows.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
@@ -130,21 +181,22 @@ export default function ProductsPage() {
         actions={
           <>
             <Button variant="secondary" size="sm" onClick={exportCsv}><Download className="w-4 h-4" /> Xuất CSV</Button>
-            <Button size="sm" onClick={() => { setBrand(''); setSlugPreview(''); setShowAdd(true); }}><Plus className="w-4 h-4" /> Thêm xe</Button>
+            <Button size="sm" onClick={() => { setBrand(''); setModel(''); setVersion(''); setSelectedColor(''); setSlugPreview(''); setShowAdd(true); }}><Plus className="w-4 h-4" /> Thêm xe</Button>
           </>
         }
       />
 
       <div className="flex flex-wrap gap-3">
-        <Select value={filterBrand} onChange={event => { setFilterBrand(event.target.value); setFilterModel(''); }} className="max-w-52"><option value="">Tất cả hãng xe</option>{categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}</Select>
-        <Select value={filterModel} onChange={event => setFilterModel(event.target.value)} className="max-w-52"><option value="">Tất cả dòng xe</option>{Array.from(new Set([...subCategories.filter(model => !filterBrand || categories.find(category => category.id === model.parentId)?.name === filterBrand).map(model => model.name), ...products.filter(product => !filterBrand || product.brand === filterBrand).map(product => product.model)])).filter(Boolean).map(model => <option key={model} value={model}>{model}</option>)}</Select>
+        <Select value={filterBrand} onChange={event => { setFilterBrand(event.target.value); setFilterModel(''); setFilterVersion(''); }} className="max-w-52"><option value="">Tất cả hãng xe</option>{categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}</Select>
+        <Select value={filterModel} onChange={event => { setFilterModel(event.target.value); setFilterVersion(''); }} className="max-w-52"><option value="">Tất cả dòng xe</option>{Array.from(new Set([...subCategories.filter(model => !filterBrand || categories.find(category => category.id === model.parentId)?.name === filterBrand).map(model => model.name), ...products.filter(product => !filterBrand || product.brand === filterBrand).map(product => product.model)])).filter(Boolean).map(model => <option key={model} value={model}>{model}</option>)}</Select>
+        <Select value={filterVersion} onChange={event => setFilterVersion(event.target.value)} className="max-w-52"><option value="">Tất cả phiên bản</option>{Array.from(new Set(products.filter(product => (!filterBrand || product.brand === filterBrand) && (!filterModel || product.model === filterModel)).map(product => product.version).filter(Boolean))).map(item => <option key={item} value={item}>{item}</option>)}</Select>
       </div>
       <DataTable
         columns={columns as unknown as Column<Record<string, unknown>>[]}
         data={visibleProducts as unknown as Record<string, unknown>[]}
         searchPlaceholder="Tìm kiếm theo tên xe, hãng..."
         searchFields={['name', 'brand', 'model']}
-        onEdit={(item) => { const product = item as unknown as Product; setBrand(product.brand); setSlugPreview(slugify(product.name)); setEditItem(product); }}
+        onEdit={(item) => { const product = item as unknown as Product; setBrand(product.brand); setModel(product.model); setVersion(product.version || ''); setSelectedColor(managedColors.some(color => color.title === product.color) ? product.color : ''); setSlugPreview(slugify(product.name)); setEditItem(product); }}
         onDelete={(item) => setDeleteItem(item as unknown as Product)}
         onView={(item) => setViewItem(item as unknown as Product)}
       />
@@ -162,14 +214,30 @@ export default function ProductsPage() {
               <Input value={slugPreview} readOnly aria-label="Slug tự tạo" placeholder="Tự tạo từ tên xe" className="cursor-default bg-[var(--muted)] text-[var(--muted-fg)]" />
             </FormField>
             <FormField label="Hãng xe" required>
-              <Select name="brand" defaultValue={formData.brand} onChange={event => setBrand(event.target.value)} required>
+              <Select name="brand" value={brand} onChange={event => { setBrand(event.target.value); setModel(''); setVersion(''); }} required>
                 <option value="">-- Chọn hãng --</option>
-                {categories.filter(category => category.status === 'active').map(category => <option key={category.id} value={category.name}>{category.name}</option>)}
+                {categories.filter(category => category.status === 'active' || category.name === editItem?.brand).map(category => <option key={category.id} value={category.name}>{category.name}{category.status !== 'active' ? ' (đã ẩn)' : ''}</option>)}
               </Select>
             </FormField>
-            <FormField label="Dòng xe">
-              <Input name="model" list="car-models" defaultValue={formData.model} placeholder="VD: Camry" />
-              <datalist id="car-models">{subCategories.filter(model => model.status === 'active' && (!brand || categories.find(category => category.id === model.parentId)?.name === brand)).map(model => <option key={model.id} value={model.name} />)}</datalist>
+            <FormField label="Dòng xe" required>
+              <Select name="model" value={model} onChange={event => { setModel(event.target.value); setVersion(''); }} disabled={!brand} required>
+                <option value="">{!brand ? '-- Chọn hãng xe trước --' : availableModels.length ? '-- Chọn dòng xe --' : '-- Hãng này chưa có dòng xe --'}</option>
+                {unavailableCurrentModel && <option value={model} disabled>{model} (không còn trong danh sách)</option>}
+                {availableModels.map(category => <option key={category.id} value={category.name}>{category.name}{category.status !== 'active' ? ' (đã ẩn)' : ''}</option>)}
+              </Select>
+              {brand && (!availableModels.length || unavailableCurrentModel) && <p className="mt-2 text-sm text-[var(--muted-fg)]">Chưa có dòng xe phù hợp? <Link href="/san-pham/dong-xe" className="font-medium text-red-600 hover:underline">Quản lý dòng xe</Link></p>}
+            </FormField>
+            <FormField label="Phiên bản xe" required>
+              <Select name="version" value={version} onChange={event => setVersion(event.target.value)} disabled={!model || unavailableCurrentModel} required>
+                <option value="">{!model ? '-- Chọn dòng xe trước --' : availableVersions.length ? '-- Chọn phiên bản --' : '-- Dòng này chưa có phiên bản --'}</option>
+                {unavailableCurrentVersion && <option value={version} disabled>{version} (không còn trong danh sách)</option>}
+                {availableVersions.map(category => <option key={category.id} value={category.name}>{category.name}{category.status !== 'active' ? ' (đã ẩn)' : ''}</option>)}
+              </Select>
+              {model && (!availableVersions.length || unavailableCurrentVersion) && <p className="mt-2 text-sm text-[var(--muted-fg)]">Chưa có phiên bản phù hợp? <Link href="/san-pham/phien-ban" className="font-medium text-red-600 hover:underline">Quản lý phiên bản xe</Link></p>}
+            </FormField>
+            <FormField label="Kiểu dáng">
+              <Input value={selectedBodyStyle?.name || (model ? 'Dòng xe chưa có kiểu dáng' : 'Chọn dòng xe để xem kiểu dáng')} readOnly aria-label="Kiểu dáng tự động theo dòng xe" className="cursor-default bg-[var(--muted)]" />
+              {model && !selectedBodyStyle && <p className="mt-2 text-sm text-[var(--muted-fg)]">Cập nhật kiểu dáng tại <Link href="/san-pham/dong-xe" className="font-medium text-red-600 hover:underline">Dòng xe</Link> trước khi lưu xe.</p>}
             </FormField>
             <FormField label="Năm sản xuất" required>
               <Input name="year" type="number" defaultValue={formData.year} required placeholder="VD: 2022" />
@@ -195,8 +263,20 @@ export default function ProductsPage() {
                 <option value="Hybrid">Hybrid</option>
               </Select>
             </FormField>
-            <FormField label="Màu sắc">
-              <Input name="color" defaultValue={formData.color} placeholder="VD: Trắng" />
+            <FormField label="Màu sắc" required>
+              <Select name="color" value={selectedColor} onChange={event => setSelectedColor(event.target.value)} required>
+                <option value="">-- Chọn màu xe --</option>
+                {availableColors.map(color => <option key={color.id} value={color.title}>{color.title}{color.status !== 'active' ? ' (đã ẩn)' : ''}</option>)}
+              </Select>
+              {colorPreview && <div className="mt-2 flex items-center gap-2 text-sm text-[var(--muted-fg)]"><span className="h-5 w-5 rounded-md border border-[var(--border-color)] shadow-sm" style={{ backgroundColor: resolveCarColorCode(colorPreview.colorCode, colorPreview.title) }} />{colorPreview.title}</div>}
+              {!availableColors.length && <p className="mt-2 text-sm text-[var(--muted-fg)]">Chưa có màu để chọn. <Link href="/thiet-lap/mau-sac" className="font-medium text-red-600 hover:underline">Quản lý màu sắc</Link></p>}
+            </FormField>
+            <FormField label="Chi nhánh đang có xe">
+              <Select name="branchId" defaultValue={formData.branchId ? String(formData.branchId) : ''}>
+                <option value="">-- Chưa chọn chi nhánh --</option>
+                {branches.filter(branch => branch.status === 'active' || branch.id === editItem?.branchId).map(branch => <option key={branch.id} value={branch.id}>{branch.name}{branch.status !== 'active' ? ' (đã ẩn)' : ''}</option>)}
+              </Select>
+              {!branches.some(branch => branch.status === 'active') && <p className="mt-2 text-sm text-[var(--muted-fg)]">Chưa có chi nhánh hoạt động. <Link href="/quan-ly/chi-nhanh" className="font-medium text-red-600 hover:underline">Quản lý chi nhánh</Link></p>}
             </FormField>
             <FormField label="Biển số">
               <Input name="licensePlate" defaultValue={formData.licensePlate} placeholder="VD: 30A" />
@@ -204,7 +284,7 @@ export default function ProductsPage() {
             <FormField label="Tình trạng xe"><Select name="condition" defaultValue={formData.condition || 'Đã qua sử dụng'}><option>Đã qua sử dụng</option><option>Xe mới</option></Select></FormField>
             <FormField label="Trạng thái"><Select name="status" defaultValue={formData.status || 'active'}><option value="active">Đang bán</option><option value="deposit">Đã nhận cọc</option><option value="sold">Đã bán</option><option value="inactive">Ẩn</option></Select></FormField>
           </div>
-          <div className="border-t border-[var(--border-color)] pt-7"><h2 className="mb-5 text-xl font-semibold">Hình ảnh xe</h2><div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><FormField label="Ảnh đại diện"><ImageUpload name="cover" existing={formData.images?.[0] !== '/placeholder-car.jpg' ? formData.images?.[0] : undefined} /></FormField><FormField label="Thư viện ảnh"><ImageUpload name="gallery" multiple maxFiles={5} existing={formData.images?.slice(1).filter(image => image !== '/placeholder-car.jpg')} hint="Tối đa 5 ảnh cho mỗi xe, tính cả ảnh đại diện." /></FormField></div></div>
+          <div className="border-t border-[var(--border-color)] pt-7"><h2 className="mb-5 text-xl font-semibold">Hình ảnh xe</h2><div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><FormField label="Ảnh đại diện"><ImageUpload name="cover" existing={formData.images?.[0] !== '/placeholder-car.jpg' ? formData.images?.[0] : undefined} /></FormField><FormField label="Thư viện ảnh"><ImageUpload name="gallery" multiple maxFiles={10} existing={formData.images?.slice(1).filter(image => image !== '/placeholder-car.jpg')} hint="Tối đa 10 ảnh cho mỗi xe, tính cả ảnh đại diện. Trang xem trước hiển thị 5 ảnh đầu tiên." /></FormField></div></div>
           <div className="border-t border-[var(--border-color)] pt-7">
             <h2 className="mb-5 text-xl font-semibold">Nhãn hiển thị</h2>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
@@ -236,16 +316,19 @@ export default function ProductsPage() {
       <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="Chi tiết sản phẩm" size="md">
         {viewItem && (
           <div className="space-y-4">
-            {viewItem.images?.some(image => image && image !== '/placeholder-car.jpg') && <div className="flex gap-3 overflow-x-auto">{viewItem.images.filter(image => image && image !== '/placeholder-car.jpg').map((image, index) => <img key={index} src={image} alt={`${viewItem.name} ${index + 1}`} className="h-40 w-56 rounded-xl object-cover" />)}</div>}
+            {viewItem.images?.some(image => image && image !== '/placeholder-car.jpg') && <div className="flex gap-3 overflow-x-auto">{viewItem.images.filter(image => image && image !== '/placeholder-car.jpg').slice(0, 5).map((image, index) => <img key={index} src={image} alt={`${viewItem.name} ${index + 1}`} className="h-40 w-56 rounded-xl object-cover" />)}</div>}
             <div className="flex items-center gap-4 p-4 rounded-xl bg-[var(--muted)]">
               <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-red-500 to-amber-500 flex items-center justify-center"><Car className="w-8 h-8 text-white" /></div>
               <div>
                 <h3 className="font-bold text-lg">{viewItem.name}</h3>
-                <p className="text-sm text-[var(--muted-fg)]">{viewItem.brand} • {viewItem.model} • {viewItem.year}</p>
+                <p className="text-sm text-[var(--muted-fg)]">{viewItem.brand} • {viewItem.model}{viewItem.version ? ` • ${viewItem.version}` : ''} • {viewItem.year}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {[
+                ['Phiên bản', viewItem.version || '—'],
+                ['Kiểu dáng', getProductBodyStyle(viewItem)],
+                ['Chi nhánh', getProductBranchName(viewItem)],
                 ['Giá bán', formatPrice(viewItem.price)],
                 ['Số km', `${formatNumber(viewItem.mileage)} km`],
                 ['Hộp số', viewItem.transmission],

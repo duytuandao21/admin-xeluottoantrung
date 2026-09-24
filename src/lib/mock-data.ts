@@ -2,16 +2,16 @@ import { Product, Category, Mail, Branch, Service, Testimonial, FAQ, NewsArticle
 
 // --- Products ---
 export const mockProducts: Product[] = [
-  { id: 1, name: 'Toyota Camry 2.5Q', slug: 'toyota-camry-25q', brand: 'Toyota', model: 'Camry', year: 2022, price: 890000000, originalPrice: 950000000, mileage: 25000, transmission: 'Tự động', fuel: 'Xăng', color: 'Trắng', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '30A', createdAt: '2024-01-15', updatedAt: '2024-03-10', featured: true, description: 'Toyota Camry 2.5Q 2022, xe đẹp, biển Hà Nội' },
-  { id: 2, name: 'Honda CR-V 1.5L Turbo', slug: 'honda-crv-15l', brand: 'Honda', model: 'CR-V', year: 2023, price: 1050000000, mileage: 12000, transmission: 'Tự động', fuel: 'Xăng', color: 'Đen', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '29A', createdAt: '2024-02-20', updatedAt: '2024-03-15', featured: true },
-  { id: 3, name: 'Mazda CX-5 2.0 Premium', slug: 'mazda-cx5-20', brand: 'Mazda', model: 'CX-5', year: 2021, price: 750000000, mileage: 35000, transmission: 'Tự động', fuel: 'Xăng', color: 'Đỏ', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '30G', createdAt: '2024-01-10', updatedAt: '2024-02-28', featured: false },
-  { id: 4, name: 'Hyundai Tucson 2.0 AT', slug: 'hyundai-tucson-20', brand: 'Hyundai', model: 'Tucson', year: 2022, price: 820000000, mileage: 28000, transmission: 'Tự động', fuel: 'Xăng', color: 'Xanh', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '29B', createdAt: '2024-03-01', updatedAt: '2024-03-20', featured: false },
-  { id: 5, name: 'Kia Seltos 1.4 Turbo', slug: 'kia-seltos-14', brand: 'Kia', model: 'Seltos', year: 2023, price: 680000000, mileage: 8000, transmission: 'Tự động', fuel: 'Xăng', color: 'Trắng', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '30A', createdAt: '2024-03-05', updatedAt: '2024-03-22', featured: true },
-  { id: 6, name: 'Mercedes C200 Exclusive', slug: 'mercedes-c200', brand: 'Mercedes-Benz', model: 'C200', year: 2021, price: 1350000000, mileage: 30000, transmission: 'Tự động', fuel: 'Xăng', color: 'Đen', status: 'sold', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '30A', createdAt: '2024-01-20', updatedAt: '2024-03-10', featured: false },
-  { id: 7, name: 'Ford Ranger Wildtrak', slug: 'ford-ranger-wildtrak', brand: 'Ford', model: 'Ranger', year: 2022, price: 850000000, mileage: 20000, transmission: 'Tự động', fuel: 'Dầu', color: 'Cam', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '29C', createdAt: '2024-02-15', updatedAt: '2024-03-18', featured: false },
-  { id: 8, name: 'VinFast VF8 Plus', slug: 'vinfast-vf8-plus', brand: 'VinFast', model: 'VF8', year: 2023, price: 1150000000, mileage: 5000, transmission: 'Tự động', fuel: 'Điện', color: 'Xám', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '30K', createdAt: '2024-03-10', updatedAt: '2024-03-25', featured: true },
-  { id: 9, name: 'Toyota Vios G CVT', slug: 'toyota-vios-g', brand: 'Toyota', model: 'Vios', year: 2023, price: 520000000, mileage: 15000, transmission: 'Tự động', fuel: 'Xăng', color: 'Bạc', status: 'inactive', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '29A', createdAt: '2024-02-28', updatedAt: '2024-03-20', featured: false },
-  { id: 10, name: 'BMW X3 xDrive30i', slug: 'bmw-x3-xdrive30i', brand: 'BMW', model: 'X3', year: 2021, price: 1800000000, mileage: 25000, transmission: 'Tự động', fuel: 'Xăng', color: 'Trắng', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '30A', createdAt: '2024-01-25', updatedAt: '2024-03-12', featured: true },
+  { id: 1, name: 'Toyota Camry 2.5Q', slug: 'toyota-camry-25q', brand: 'Toyota', model: 'Camry', version: '2.5Q', year: 2022, price: 890000000, originalPrice: 950000000, mileage: 25000, transmission: 'Tự động', fuel: 'Xăng', color: 'Trắng', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '30A', createdAt: '2024-01-15', updatedAt: '2024-03-10', featured: true, description: 'Toyota Camry 2.5Q 2022, xe đẹp, biển Hà Nội' },
+  { id: 2, name: 'Honda CR-V 1.5L Turbo', slug: 'honda-crv-15l', brand: 'Honda', model: 'CR-V', version: '1.5L Turbo', year: 2023, price: 1050000000, mileage: 12000, transmission: 'Tự động', fuel: 'Xăng', color: 'Đen', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '29A', createdAt: '2024-02-20', updatedAt: '2024-03-15', featured: true },
+  { id: 3, name: 'Mazda CX-5 2.0 Premium', slug: 'mazda-cx5-20', brand: 'Mazda', model: 'CX-5', version: '2.0 Premium', year: 2021, price: 750000000, mileage: 35000, transmission: 'Tự động', fuel: 'Xăng', color: 'Đỏ', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '30G', createdAt: '2024-01-10', updatedAt: '2024-02-28', featured: false },
+  { id: 4, name: 'Hyundai Tucson 2.0 AT', slug: 'hyundai-tucson-20', brand: 'Hyundai', model: 'Tucson', version: '2.0 AT', year: 2022, price: 820000000, mileage: 28000, transmission: 'Tự động', fuel: 'Xăng', color: 'Xanh', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '29B', createdAt: '2024-03-01', updatedAt: '2024-03-20', featured: false },
+  { id: 5, name: 'Kia Seltos 1.4 Turbo', slug: 'kia-seltos-14', brand: 'Kia', model: 'Seltos', version: '1.4 Turbo', year: 2023, price: 680000000, mileage: 8000, transmission: 'Tự động', fuel: 'Xăng', color: 'Trắng', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '30A', createdAt: '2024-03-05', updatedAt: '2024-03-22', featured: true },
+  { id: 6, name: 'Mercedes C200 Exclusive', slug: 'mercedes-c200', brand: 'Mercedes-Benz', model: 'C200', version: 'Exclusive', year: 2021, price: 1350000000, mileage: 30000, transmission: 'Tự động', fuel: 'Xăng', color: 'Đen', status: 'sold', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '30A', createdAt: '2024-01-20', updatedAt: '2024-03-10', featured: false },
+  { id: 7, name: 'Ford Ranger Wildtrak', slug: 'ford-ranger-wildtrak', brand: 'Ford', model: 'Ranger', version: 'Wildtrak', year: 2022, price: 850000000, mileage: 20000, transmission: 'Tự động', fuel: 'Dầu', color: 'Cam', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '29C', createdAt: '2024-02-15', updatedAt: '2024-03-18', featured: false },
+  { id: 8, name: 'VinFast VF8 Plus', slug: 'vinfast-vf8-plus', brand: 'VinFast', model: 'VF8', version: 'Plus', year: 2023, price: 1150000000, mileage: 5000, transmission: 'Tự động', fuel: 'Điện', color: 'Xám', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '30K', createdAt: '2024-03-10', updatedAt: '2024-03-25', featured: true },
+  { id: 9, name: 'Toyota Vios G CVT', slug: 'toyota-vios-g', brand: 'Toyota', model: 'Vios', version: 'G CVT', year: 2023, price: 520000000, mileage: 15000, transmission: 'Tự động', fuel: 'Xăng', color: 'Bạc', status: 'inactive', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '29A', createdAt: '2024-02-28', updatedAt: '2024-03-20', featured: false },
+  { id: 10, name: 'BMW X3 xDrive30i', slug: 'bmw-x3-xdrive30i', brand: 'BMW', model: 'X3', version: 'xDrive30i', year: 2021, price: 1800000000, mileage: 25000, transmission: 'Tự động', fuel: 'Xăng', color: 'Trắng', status: 'active', condition: 'Đã qua sử dụng', images: ['/placeholder-car.jpg'], licensePlate: '30A', createdAt: '2024-01-25', updatedAt: '2024-03-12', featured: true },
 ];
 
 // --- Categories ---
@@ -29,15 +29,39 @@ export const mockCategories: Category[] = [
 ];
 
 export const mockSubCategories: Category[] = [
-  { id: 101, name: 'Camry', slug: 'camry', parentId: 1, order: 1, status: 'active', count: 8 },
-  { id: 102, name: 'Vios', slug: 'vios', parentId: 1, order: 2, status: 'active', count: 6 },
-  { id: 103, name: 'Corolla Cross', slug: 'corolla-cross', parentId: 1, order: 3, status: 'active', count: 5 },
-  { id: 104, name: 'Fortuner', slug: 'fortuner', parentId: 1, order: 4, status: 'active', count: 6 },
-  { id: 201, name: 'CR-V', slug: 'crv', parentId: 2, order: 1, status: 'active', count: 7 },
-  { id: 202, name: 'City', slug: 'city', parentId: 2, order: 2, status: 'active', count: 5 },
-  { id: 203, name: 'Civic', slug: 'civic', parentId: 2, order: 3, status: 'active', count: 6 },
-  { id: 301, name: 'CX-5', slug: 'cx5', parentId: 3, order: 1, status: 'active', count: 8 },
-  { id: 302, name: 'Mazda3', slug: 'mazda3', parentId: 3, order: 2, status: 'active', count: 7 },
+  { id: 101, name: 'Camry', slug: 'camry', parentId: 1, bodyStyleId: 1, order: 1, status: 'active', count: 8 },
+  { id: 102, name: 'Vios', slug: 'vios', parentId: 1, bodyStyleId: 1, order: 2, status: 'active', count: 6 },
+  { id: 103, name: 'Corolla Cross', slug: 'corolla-cross', parentId: 1, bodyStyleId: 2, order: 3, status: 'active', count: 5 },
+  { id: 104, name: 'Fortuner', slug: 'fortuner', parentId: 1, bodyStyleId: 2, order: 4, status: 'active', count: 6 },
+  { id: 201, name: 'CR-V', slug: 'crv', parentId: 2, bodyStyleId: 2, order: 1, status: 'active', count: 7 },
+  { id: 202, name: 'City', slug: 'city', parentId: 2, bodyStyleId: 1, order: 2, status: 'active', count: 5 },
+  { id: 203, name: 'Civic', slug: 'civic', parentId: 2, bodyStyleId: 1, order: 3, status: 'active', count: 6 },
+  { id: 301, name: 'CX-5', slug: 'cx5', parentId: 3, bodyStyleId: 2, order: 1, status: 'active', count: 8 },
+  { id: 302, name: 'Mazda3', slug: 'mazda3', parentId: 3, bodyStyleId: 1, order: 2, status: 'active', count: 7 },
+  { id: 401, name: 'Tucson', slug: 'tucson', parentId: 4, bodyStyleId: 2, order: 1, status: 'active', count: 1 },
+  { id: 501, name: 'Seltos', slug: 'seltos', parentId: 5, bodyStyleId: 2, order: 1, status: 'active', count: 1 },
+  { id: 601, name: 'C200', slug: 'c200', parentId: 6, bodyStyleId: 1, order: 1, status: 'active', count: 1 },
+  { id: 701, name: 'X3', slug: 'x3', parentId: 7, bodyStyleId: 2, order: 1, status: 'active', count: 1 },
+  { id: 801, name: 'Ranger', slug: 'ranger', parentId: 8, bodyStyleId: 5, order: 1, status: 'active', count: 1 },
+  { id: 901, name: 'VF8', slug: 'vf8', parentId: 9, bodyStyleId: 2, order: 1, status: 'active', count: 1 },
+];
+
+export function getModelBodyStyleId(model: Category): number | undefined {
+  if (model.bodyStyleId) return model.bodyStyleId;
+  return mockSubCategories.find(item => item.id === model.id && item.parentId === model.parentId && item.name === model.name)?.bodyStyleId;
+}
+
+export const mockVersions: Category[] = [
+  { id: 1001, name: '2.5Q', slug: '25q', parentId: 101, order: 1, status: 'active' },
+  { id: 1002, name: 'G CVT', slug: 'g-cvt', parentId: 102, order: 1, status: 'active' },
+  { id: 1003, name: '1.5L Turbo', slug: '15l-turbo', parentId: 201, order: 1, status: 'active' },
+  { id: 1004, name: '2.0 Premium', slug: '20-premium', parentId: 301, order: 1, status: 'active' },
+  { id: 1005, name: '2.0 AT', slug: '20-at', parentId: 401, order: 1, status: 'active' },
+  { id: 1006, name: '1.4 Turbo', slug: '14-turbo', parentId: 501, order: 1, status: 'active' },
+  { id: 1007, name: 'Exclusive', slug: 'exclusive', parentId: 601, order: 1, status: 'active' },
+  { id: 1008, name: 'xDrive30i', slug: 'xdrive30i', parentId: 701, order: 1, status: 'active' },
+  { id: 1009, name: 'Wildtrak', slug: 'wildtrak', parentId: 801, order: 1, status: 'active' },
+  { id: 1010, name: 'Plus', slug: 'plus', parentId: 901, order: 1, status: 'active' },
 ];
 
 // --- Mail ---
@@ -186,11 +210,21 @@ export const mockDashboardStats: DashboardStats = {
 
 // Helper: format price
 export function formatPrice(price: number): string {
-  if (price >= 1000000000) {
-    const ty = price / 1000000000;
-    return ty % 1 === 0 ? `${ty} tỷ` : `${ty.toFixed(1)} tỷ`;
-  }
-  return `${(price / 1000000).toFixed(0)} triệu`;
+  if (!Number.isFinite(price)) return '—';
+  if (price === 0) return '0 đ';
+
+  const parts: string[] = [];
+  const billions = Math.floor(price / 1_000_000_000);
+  const millions = Math.floor((price % 1_000_000_000) / 1_000_000);
+  const thousands = Math.floor((price % 1_000_000) / 1_000);
+  const dong = price % 1_000;
+
+  if (billions) parts.push(`${formatNumber(billions)} tỷ`);
+  if (millions) parts.push(`${formatNumber(millions)} triệu`);
+  if (thousands) parts.push(`${formatNumber(thousands)} nghìn`);
+  if (dong) parts.push(`${formatNumber(dong)} đ`);
+
+  return parts.join(' ');
 }
 
 // Helper: format number with dots

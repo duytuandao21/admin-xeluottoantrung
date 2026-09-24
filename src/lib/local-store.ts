@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 const prefix = 'xeluottoantrung-admin:v1:';
 
@@ -28,7 +29,7 @@ export function useLocalStore<T>(key: string, initialValue: T) {
         window.dispatchEvent(new CustomEvent('admin-store-change', { detail: key }));
       }
     } catch {
-      // The caller can still edit during this session if browser storage is full.
+      toast.error('Không thể lưu dữ liệu vào trình duyệt. Ảnh có thể quá lớn; thay đổi sẽ mất khi tải lại trang.', { id: 'local-store-save-error' });
     }
   }, [key, loaded, value]);
 
@@ -55,7 +56,6 @@ export function useLocalStore<T>(key: string, initialValue: T) {
 export function readImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) return reject(new Error('Vui lòng chọn tập tin ảnh.'));
-    if (file.size > 1024 * 1024) return reject(new Error('Ảnh phải nhỏ hơn 1 MB để lưu trên trình duyệt.'));
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
     reader.onerror = () => reject(new Error('Không thể đọc ảnh.'));

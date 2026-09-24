@@ -32,6 +32,7 @@ export const menuItems: MenuItem[] = [
       { label: 'Danh sách xe', href: '/san-pham', icon: Car },
       { label: 'Hãng xe', href: '/san-pham/hang-xe', icon: Factory },
       { label: 'Dòng xe', href: '/san-pham/dong-xe', icon: CarFront },
+      { label: 'Phiên bản xe', href: '/san-pham/phien-ban', icon: BadgeCheck },
     ]
   },
   {
@@ -213,7 +214,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="flex h-16 shrink-0 items-center justify-center border-b border-white/10">
         <Link href="/" aria-label="Về trang tổng quan" className="flex h-full w-full items-center justify-center overflow-hidden">
-          <NextImage src="/images/logo-gold.png" alt="Toàn Trung" width={1600} height={640} sizes={sidebarOpen ? '192px' : '84px'} className={`h-auto max-w-none shrink-0 ${sidebarOpen ? 'w-48' : 'w-[84px]'}`} />
+            <NextImage src="/images/logo-gold.png" alt="Toàn Trung" width={1600} height={640} sizes={sidebarOpen ? '160px' : '84px'} className={`h-auto max-w-none shrink-0 ${sidebarOpen ? 'w-40' : 'w-[84px]'}`} />
         </Link>
       </div>
 

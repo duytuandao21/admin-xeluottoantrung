@@ -6,6 +6,8 @@ export interface Product {
   slug: string;
   brand: string;
   model: string;
+  version?: string;
+  branchId?: number;
   year: number;
   price: number;
   originalPrice?: number;
@@ -30,6 +32,7 @@ export interface Category {
   name: string;
   slug: string;
   parentId?: number;
+  bodyStyleId?: number;
   image?: string;
   order: number;
   status: 'active' | 'inactive';

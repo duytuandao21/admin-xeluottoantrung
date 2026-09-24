@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import CrudPage from '@/components/CrudPage';
 import { StatusBadge } from '@/components/ui';
-import { resolveCarColorCode } from '@/lib/car-colors';
+import { initialManagedCarColors, resolveCarColorCode } from '@/lib/car-colors';
 
 type Kind = 'image' | 'link' | 'text' | 'color';
 type Definition = { title: string; kind: Kind; entries?: string[]; featured?: boolean; description?: boolean };
@@ -21,7 +21,7 @@ const definitions: Record<string, Definition> = {
   '/thiet-lap/tai-sao-chon': { title: 'Tại sao chọn chúng tôi', kind: 'image', entries: ['Làm việc nhanh, đơn giản'], description: true },
   '/thiet-lap/goi-y-nam-san-xuat': { title: 'Gợi ý năm sản xuất', kind: 'text', entries: ['2013-2015', '2016 - 2018', '2019 - 2021', '2022-2024'] },
   '/thiet-lap/nut-goi': { title: 'Nút gọi', kind: 'text', entries: ['Thanh Tài', 'Thạch', 'Nam Anh', 'Lem', 'Dương', 'Đức Chí', 'Chẩn', 'Xuân', 'Dâng', 'Oto Toàn Trung'] },
-  '/thiet-lap/mau-sac': { title: 'Màu sắc', kind: 'color', entries: ['Xanh', 'Xám', 'Nâu', 'Cam', 'Vàng', 'Bạc', 'Trắng', 'Đỏ', 'Đen'] },
+  '/thiet-lap/mau-sac': { title: 'Màu sắc', kind: 'color', entries: initialManagedCarColors.map(color => color.title) },
   '/thiet-lap/mang-xa-hoi': { title: 'Mạng xã hội', kind: 'link', entries: ['Facebook', 'YouTube', 'Zalo', 'TikTok'] },
   '/thiet-lap/ung-dung': { title: 'Ứng dụng', kind: 'link', entries: ['App Store', 'Google Play'] },
 };
