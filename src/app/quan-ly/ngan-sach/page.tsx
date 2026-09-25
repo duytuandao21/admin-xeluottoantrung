@@ -1,9 +1,8 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { mockBudgets } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
 export default function NganSachPage() {
-  return <CrudPage title="Quản lý ngân sách" data={mockBudgets as unknown as Record<string, unknown>[]} columns={[
+  return <CrudPage title="Quản lý ngân sách" columns={[
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'name', label: 'Khoảng ngân sách', sortable: true, render: (item) => <span className="font-medium">{String(item.name)}</span> },
     { key: 'slug', label: 'Slug' },

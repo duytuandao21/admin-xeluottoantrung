@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { PageHeader, DataTable, StatusBadge, Modal, ConfirmDialog, FormField, Input, Select, Button, type Column } from '@/components/ui';
-import { mockProducts, mockCategories, mockSubCategories, mockVersions, mockBodyStyles, mockBranches, getModelBodyStyleId, formatPrice, formatNumber } from '@/lib/mock-data';
-import { useLocalStore, readImage, slugify } from '@/lib/local-store';
+import { formatPrice, formatNumber } from '@/lib/format';
+import { slugify } from '@/lib/slug';
+import { api, json, query, type PageResult } from '@/lib/api/client';
+import { carDetail, carToProduct, deleteCar, listCars, saveCar } from '@/lib/api/cars';
+import { uploadCarImage } from '@/lib/api/media';
 import { Plus, Download, Car, Star, CreditCard, Sparkles, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Product, Category, CarAttribute, Branch } from '@/lib/types';
@@ -13,17 +16,23 @@ import ProductThumbnail from '@/components/ProductThumbnail';
 import { formatDate } from '@/lib/date';
 import RichTextEditor, { RichTextContent } from '@/components/RichTextEditor';
 import { sanitizeRichText } from '@/lib/rich-text';
-import { initialManagedCarColors, resolveCarColorCode, type ManagedCarColor } from '@/lib/car-colors';
+import { resolveCarColorCode, type ManagedCarColor } from '@/lib/car-colors';
 import Link from 'next/link';
 
 export default function ProductsPage() {
-  const [products, setProducts] = useLocalStore<Product[]>('/san-pham', mockProducts);
-  const [categories] = useLocalStore<Category[]>('/danh-muc/cap-1', mockCategories);
-  const [subCategories] = useLocalStore<Category[]>('/danh-muc/cap-2', mockSubCategories);
-  const [versions] = useLocalStore<Category[]>('/san-pham/phien-ban', mockVersions);
-  const [bodyStyles] = useLocalStore<CarAttribute[]>('/quan-ly/kieu-dang', mockBodyStyles);
-  const [managedColors] = useLocalStore<ManagedCarColor[]>('/thiet-lap/mau-sac', initialManagedCarColors);
-  const [branches] = useLocalStore<Branch[]>('/quan-ly/chi-nhanh', mockBranches);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subCategories, setSubCategories] = useState<Category[]>([]);
+  const [versions, setVersions] = useState<Category[]>([]);
+  const [bodyStyles, setBodyStyles] = useState<CarAttribute[]>([]);
+  const [managedColors, setManagedColors] = useState<ManagedCarColor[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [mediaIds, setMediaIds] = useState<Record<string, string>>({});
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [editItem, setEditItem] = useState<Product | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [deleteItem, setDeleteItem] = useState<Product | null>(null);
@@ -36,11 +45,37 @@ export default function ProductsPage() {
   const [filterModel, setFilterModel] = useState('');
   const [filterVersion, setFilterVersion] = useState('');
   const [slugPreview, setSlugPreview] = useState('');
-  const visibleProducts = products.filter(product => (!filterBrand || product.brand === filterBrand) && (!filterModel || product.model === filterModel) && (!filterVersion || product.version === filterVersion));
+  const all = useCallback(async <T,>(path: string): Promise<T[]> => {
+    const first = await api<PageResult<T>>(`${path}${query({ page: 1, limit: 100 })}`);
+    const rows = [...first.data];
+    for (let next = 2; next <= first.meta.totalPages; next++) rows.push(...(await api<PageResult<T>>(`${path}${query({ page: next, limit: 100 })}`)).data);
+    return rows;
+  }, []);
+  const reload = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const result = await listCars({ page, search, brand: categories.find(c => c.name === filterBrand)?.slug, model: subCategories.find(c => c.name === filterModel)?.slug, version: versions.find(c => c.name === filterVersion)?.slug });
+      setProducts(result.data.map(carToProduct)); setTotal(result.meta.total);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Không thể tải danh sách xe.'); setProducts([]); }
+    finally { setLoading(false); }
+  }, [page, search, filterBrand, filterModel, filterVersion, categories, subCategories, versions]);
+  useEffect(() => { queueMicrotask(() => void reload()); }, [reload]);
+  useEffect(() => {
+    void Promise.all([
+      api<Category[]>('/admin/brands'), api<Category[]>('/admin/car-models'), all<Category>('/admin/lookups/car-versions'),
+      all<CarAttribute>('/admin/lookups/body-styles'), all<ManagedCarColor>('/admin/lookups/car-colors'), all<Branch>('/admin/lookups/branches'),
+    ]).then(([brands, models, versions, styles, colors, branches]) => {
+      setCategories(brands); setSubCategories(models.map(model => ({ ...model, parentId: (model as unknown as { brandId: number }).brandId })));
+      setVersions(versions.map(version => ({ ...version, parentId: (version as unknown as { modelId: number }).modelId })));
+      setBodyStyles(styles); setManagedColors(colors.map(color => ({ ...color, title: (color as unknown as { name: string }).name })));
+      setBranches(branches);
+    }).catch(failure => setError(failure instanceof Error ? failure.message : 'Không thể tải danh mục xe.'));
+  }, [all]);
+  const visibleProducts = products;
   const selectedBrand = categories.find(category => category.name === brand);
   const availableModels = subCategories.filter(category => category.parentId === selectedBrand?.id && (category.status === 'active' || (editItem?.brand === brand && editItem.model === category.name)));
   const selectedModel = availableModels.find(category => category.name === model);
-  const selectedBodyStyle = bodyStyles.find(style => style.id === (selectedModel ? getModelBodyStyleId(selectedModel) : undefined));
+  const selectedBodyStyle = bodyStyles.find(style => style.id === selectedModel?.bodyStyleId);
   const availableColors = managedColors.filter(color => color.status === 'active' || (editItem && color.title === editItem.color));
   const colorPreview = managedColors.find(color => color.title === selectedColor);
   const availableVersions = versions.filter(category => category.parentId === selectedModel?.id && (category.status === 'active' || (editItem?.brand === brand && editItem?.model === model && editItem?.version === category.name)));
@@ -49,11 +84,11 @@ export default function ProductsPage() {
   const getProductBodyStyle = (product: Product) => {
     const carBrand = categories.find(category => category.name === product.brand);
     const carModel = subCategories.find(category => category.parentId === carBrand?.id && category.name === product.model);
-    return bodyStyles.find(style => style.id === (carModel ? getModelBodyStyleId(carModel) : undefined))?.name || '—';
+    return bodyStyles.find(style => style.id === carModel?.bodyStyleId)?.name || '—';
   };
   const getProductBranchName = (product: Product) => product.branchId
     ? branches.find(branch => branch.id === product.branchId)?.name || 'Chi nhánh không còn tồn tại'
-    : 'Chưa chọn';
+    : product.branchName || 'Chưa chọn';
   const getProductListName = (product: Product) => [product.brand, product.model || product.name, product.version, product.year].filter(Boolean).join(' ');
 
   const columns = [
@@ -73,16 +108,44 @@ export default function ProductsPage() {
     { key: 'mileage', label: 'Số km', sortable: true, render: (item: Product) => <span>{formatNumber(item.mileage)} km</span> },
     { key: 'transmission', label: 'Hộp số' },
     { key: 'status', label: 'Trạng thái', render: (item: Product) => <StatusBadge status={item.status} labels={{ active: 'Đang bán', inactive: 'Ẩn', deposit: 'Đã nhận cọc', sold: 'Đã bán' }} /> },
-    { key: 'featured', label: 'Nổi bật', render: (item: Product) => <button type="button" role="switch" aria-checked={item.featured} aria-label={`Nổi bật: ${item.name}`} onClick={() => setProducts(previous => previous.map(product => product.id === item.id ? { ...product, featured: !product.featured } : product))} className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${item.featured ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-600'}`}><span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${item.featured ? 'translate-x-6' : 'translate-x-1'}`} /></button> },
-    { key: 'installment', label: 'Trả góp', render: (item: Product) => <button type="button" role="switch" aria-checked={Boolean(item.installment)} aria-label={`Trả góp: ${item.name}`} onClick={() => setProducts(previous => previous.map(product => product.id === item.id ? { ...product, installment: !product.installment } : product))} className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${item.installment ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-600'}`}><span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${item.installment ? 'translate-x-6' : 'translate-x-1'}`} /></button> },
+    { key: 'featured', label: 'Nổi bật', render: (item: Product) => <button type="button" role="switch" aria-checked={item.featured} aria-label={`Nổi bật: ${item.name}`} onClick={() => void toggleCar(item, 'featured')} className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${item.featured ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-600'}`}><span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${item.featured ? 'translate-x-6' : 'translate-x-1'}`} /></button> },
+    { key: 'installment', label: 'Trả góp', render: (item: Product) => <button type="button" role="switch" aria-checked={Boolean(item.installment)} aria-label={`Trả góp: ${item.name}`} onClick={() => void toggleCar(item, 'installment')} className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${item.installment ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-600'}`}><span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${item.installment ? 'translate-x-6' : 'translate-x-1'}`} /></button> },
     { key: 'createdAt', label: 'Ngày tạo', sortable: true },
   ];
 
-  const handleDelete = () => {
+  const toggleCar = async (item: Product, field: 'featured' | 'installment') => {
+    try { await saveCar({ [field]: !item[field] }, String(item.id)); await reload(); }
+    catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật xe.'); }
+  };
+  const openEdit = async (product: Product) => {
+    try {
+      const detail = await carDetail(String(product.id));
+      const images = [...detail.media].sort((a, b) => Number(b.isCover) - Number(a.isCover) || a.sortOrder - b.sortOrder);
+      setMediaIds(Object.fromEntries(images.map(media => [media.publicUrl, media.id])));
+      const hydrated: Product = { ...product, images: images.map(media => media.publicUrl), branchId: detail.branchId as number | undefined,
+        color: managedColors.find(color => String(color.id) === detail.colorId)?.title || '',
+        transmission: bodyStyles.length >= 0 ? String((await all<Record<string, unknown>>('/admin/lookups/transmissions')).find(row => row.id === detail.transmissionId)?.name || 'Tự động') : 'Tự động',
+        condition: String(detail.condition || ''), licensePlate: String(detail.licensePlate || ''), description: String(detail.description || ''), fuel: String(detail.fuel || ''),
+        updatedAt: String(detail.updatedAt || ''), originalPrice: Number(detail.originalPrice || 0) };
+      setBrand(hydrated.brand); setModel(hydrated.model); setVersion(hydrated.version || ''); setSelectedColor(hydrated.color);
+      setSlugPreview(hydrated.slug); setEditItem(hydrated);
+    } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể tải chi tiết xe.'); }
+  };
+  const openView = async (product: Product) => {
+    try {
+      const detail = await carDetail(String(product.id));
+      const images = [...detail.media].sort((a, b) => Number(b.isCover) - Number(a.isCover) || a.sortOrder - b.sortOrder);
+      setViewItem({ ...product, images: images.map(media => media.publicUrl),
+        branchId: detail.branchId as number | undefined,
+        color: managedColors.find(color => String(color.id) === detail.colorId)?.title || product.color,
+        condition: String(detail.condition || ''), licensePlate: String(detail.licensePlate || ''),
+        description: String(detail.description || ''), updatedAt: String(detail.updatedAt || product.updatedAt) });
+    } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể tải chi tiết xe.'); }
+  };
+  const handleDelete = async () => {
     if (deleteItem) {
-      setProducts(prev => prev.filter(p => p.id !== deleteItem.id));
-      toast.success('Đã xóa sản phẩm thành công!');
-      setDeleteItem(null);
+      try { await deleteCar(String(deleteItem.id)); toast.success('Đã xóa sản phẩm thành công!'); setDeleteItem(null); await reload(); }
+      catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể xóa xe.'); }
     }
   };
 
@@ -97,7 +160,7 @@ export default function ProductsPage() {
       toast.error('Vui lòng chọn đúng hãng xe, dòng xe và phiên bản có sẵn.');
       return;
     }
-    if (!bodyStyles.some(style => style.id === getModelBodyStyleId(chosenModel))) {
+    if (!bodyStyles.some(style => style.id === chosenModel.bodyStyleId)) {
       toast.error('Dòng xe chưa có kiểu dáng hợp lệ. Vui lòng cập nhật kiểu dáng ở mục Dòng xe.');
       return;
     }
@@ -115,48 +178,49 @@ export default function ProductsPage() {
     const currentImages = editItem?.images?.filter(image => image && image !== '/placeholder-car.jpg') || [];
     const removedGallery = new Set(form.getAll('gallery__removeIndex').map(index => Number(index)));
     const remainingGallery = currentImages.slice(1).filter((_, index) => !removedGallery.has(index));
-    let images = [
-      ...(!form.has('cover__remove') && currentImages[0] ? [currentImages[0]] : []),
-      ...remainingGallery,
-    ];
+    const coverFile = form.get('cover');
+    const images = [...(!form.has('cover__remove') && !(coverFile instanceof File && coverFile.size) && currentImages[0] ? [currentImages[0]] : []), ...remainingGallery];
     try {
-      const cover = form.get('cover');
-      if (cover instanceof File && cover.size) images = [await readImage(cover), ...remainingGallery];
       const gallery = form.getAll('gallery').filter((entry): entry is File => entry instanceof File && entry.size > 0);
-      if (images.length + gallery.length > 10) throw new Error('Mỗi xe chỉ được có tối đa 10 ảnh.');
-      if (gallery.length) images = [...images, ...await Promise.all(gallery.map(readImage))];
+      if (images.length + gallery.length + (coverFile instanceof File && coverFile.size ? 1 : 0) > 10) throw new Error('Mỗi xe chỉ được có tối đa 10 ảnh.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Không thể lưu ảnh.');
       return;
     }
-    const now = new Date().toISOString().split('T')[0];
     const fields = {
-      name: String(data.name).trim(), brand: chosenBrand.name, model: chosenModel.name, version: chosenVersion.name,
-      slug: slugify(String(data.name)), year: Number(data.year), price: Number(String(data.price).replace(/\D/g, '')),
+      name: String(data.name).trim(), brandId: String(chosenBrand.id), modelId: String(chosenModel.id), versionId: String(chosenVersion.id),
+      bodyStyleId: String(selectedBodyStyle?.id), year: Number(data.year), price: Number(String(data.price).replace(/\D/g, '')),
       originalPrice: Number(String(data.originalPrice || '').replace(/\D/g, '')), mileage: Number(String(data.mileage || '').replace(/\D/g, '')),
-      transmission: String(data.transmission), fuel: String(data.fuel), color: chosenColor.title,
-      branchId: chosenBranch?.id,
+      transmissionId: undefined as string | undefined, fuel: String(data.fuel), colorId: String(chosenColor.id),
+      branchId: chosenBranch ? String(chosenBranch.id) : null,
       licensePlate: String(data.licensePlate || ''), condition: String(data.condition || ''),
       status: String(data.status) as Product['status'], description: sanitizeRichText(String(data.description || '')),
-      featured: form.has('featured'), installment: form.has('installment'), newArrival: form.has('newArrival'), images,
-      updatedAt: now,
+      featured: form.has('featured'), installment: form.has('installment'), newArrival: form.has('newArrival'),
     };
-    if (!fields.slug) {
+    if (!slugify(fields.name)) {
       toast.error('Tên xe cần có chữ hay số để tạo slug.');
       return;
     }
 
-    if (editItem) {
-      setProducts(prev => prev.map(p => p.id === editItem.id ? { ...p, ...fields } : p));
-      toast.success('Đã cập nhật sản phẩm!');
-    } else {
-      const newProduct: Product = {
-        id: Math.max(0, ...products.map(p => p.id)) + 1,
-        ...fields,
-        createdAt: now,
-      };
-      setProducts(prev => [newProduct, ...prev]);
-      toast.success('Đã thêm sản phẩm mới!');
+    let savedCarId: string | undefined;
+    try {
+      const transmissions = await all<Record<string, unknown>>('/admin/lookups/transmissions');
+      fields.transmissionId = String(transmissions.find(item => item.name === data.transmission)?.id || '') || undefined;
+      const saved = await saveCar({ ...fields, ...(editItem ? {} : { slug: slugify(fields.name) }) }, editItem ? String(editItem.id) : undefined);
+      const carId = String(saved.id);
+      savedCarId = carId;
+      if (coverFile instanceof File && coverFile.size) await uploadCarImage(carId, coverFile, true);
+      for (const file of form.getAll('gallery')) if (file instanceof File && file.size) await uploadCarImage(carId, file);
+      if (editItem) for (const url of currentImages.filter(url => !images.includes(url))) {
+        const mediaId = mediaIds[url]; if (mediaId) await api(`/admin/cars/${carId}/media/${mediaId}`, json('DELETE'));
+      }
+      if (fields.status !== 'inactive') await api(`/admin/cars/${carId}/publish`, json('POST'));
+      else if (editItem) await api(`/admin/cars/${carId}/unpublish`, json('POST'));
+      toast.success(editItem ? 'Đã cập nhật sản phẩm!' : 'Đã thêm sản phẩm mới!'); await reload();
+    } catch (failure) {
+      toast.error(`${savedCarId ? 'Xe đã lưu nhưng thao tác ảnh hoặc xuất bản chưa hoàn tất. ' : ''}${failure instanceof Error ? failure.message : 'Không thể lưu sản phẩm.'}`);
+      if (savedCarId) { await reload(); setEditItem(null); setShowAdd(false); }
+      return;
     }
     setEditItem(null);
     setShowAdd(false);
@@ -164,20 +228,26 @@ export default function ProductsPage() {
 
   const formModal = showAdd || editItem;
   const formData = editItem || {} as Partial<Product>;
-  const exportCsv = () => {
-    const rows = [['ID', 'Tên xe', 'Hãng', 'Dòng xe', 'Phiên bản', 'Kiểu dáng', 'Chi nhánh', 'Năm', 'Giá bán', 'Số km', 'Trạng thái'], ...products.map(p => [p.id, p.name, p.brand, p.model, p.version || '', getProductBodyStyle(p), p.branchId ? getProductBranchName(p) : '', p.year, p.price, p.mileage, p.status])];
+  const exportCsv = async () => {
+    try {
+    const filters = { search, brand: categories.find(c => c.name === filterBrand)?.slug, model: subCategories.find(c => c.name === filterModel)?.slug, version: versions.find(c => c.name === filterVersion)?.slug };
+    const first = await listCars({ ...filters, page: 1 });
+    const allCars = [...first.data];
+    for (let next = 2; next <= first.meta.totalPages; next++) allCars.push(...(await listCars({ ...filters, page: next })).data);
+    const rows = [['ID', 'Tên xe', 'Hãng', 'Dòng xe', 'Phiên bản', 'Kiểu dáng', 'Chi nhánh', 'Năm', 'Giá bán', 'Số km', 'Trạng thái'], ...allCars.map(row => { const p = carToProduct(row); return [p.id, p.name, p.brand, p.model, p.version || '', String(row.bodyType || ''), p.branchName || '', p.year, p.price, p.mileage, p.status]; })];
     const csv = '\uFEFF' + rows.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url; link.download = 'san-pham.csv'; link.click();
     URL.revokeObjectURL(url);
+    } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể xuất danh sách xe.'); }
   };
 
   return (
     <div className="space-y-6">
       {!formModal && !viewItem && <><PageHeader
         title="Quản lý sản phẩm"
-        subtitle={`${products.length} xe đang quản lý`}
+        subtitle={`${total} xe đang quản lý`}
         actions={
           <>
             <Button variant="secondary" size="sm" onClick={exportCsv}><Download className="w-4 h-4" /> Xuất CSV</Button>
@@ -187,18 +257,21 @@ export default function ProductsPage() {
       />
 
       <div className="flex flex-wrap gap-3">
-        <Select value={filterBrand} onChange={event => { setFilterBrand(event.target.value); setFilterModel(''); setFilterVersion(''); }} className="max-w-52"><option value="">Tất cả hãng xe</option>{categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}</Select>
-        <Select value={filterModel} onChange={event => { setFilterModel(event.target.value); setFilterVersion(''); }} className="max-w-52"><option value="">Tất cả dòng xe</option>{Array.from(new Set([...subCategories.filter(model => !filterBrand || categories.find(category => category.id === model.parentId)?.name === filterBrand).map(model => model.name), ...products.filter(product => !filterBrand || product.brand === filterBrand).map(product => product.model)])).filter(Boolean).map(model => <option key={model} value={model}>{model}</option>)}</Select>
-        <Select value={filterVersion} onChange={event => setFilterVersion(event.target.value)} className="max-w-52"><option value="">Tất cả phiên bản</option>{Array.from(new Set(products.filter(product => (!filterBrand || product.brand === filterBrand) && (!filterModel || product.model === filterModel)).map(product => product.version).filter(Boolean))).map(item => <option key={item} value={item}>{item}</option>)}</Select>
+        <Select value={filterBrand} onChange={event => { setPage(1); setFilterBrand(event.target.value); setFilterModel(''); setFilterVersion(''); }} className="max-w-52"><option value="">Tất cả hãng xe</option>{categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}</Select>
+        <Select value={filterModel} onChange={event => { setPage(1); setFilterModel(event.target.value); setFilterVersion(''); }} className="max-w-52"><option value="">Tất cả dòng xe</option>{subCategories.filter(item => !filterBrand || String(item.parentId) === String(categories.find(brand => brand.name === filterBrand)?.id)).map(item => <option key={item.id} value={item.name}>{item.name}</option>)}</Select>
+        <Select value={filterVersion} onChange={event => { setPage(1); setFilterVersion(event.target.value); }} className="max-w-52"><option value="">Tất cả phiên bản</option>{versions.filter(item => !filterModel || String(item.parentId) === String(subCategories.find(model => model.name === filterModel)?.id)).map(item => <option key={item.id} value={item.name}>{item.name}</option>)}</Select>
       </div>
+      {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error} <button className="underline" onClick={() => void reload()}>Thử lại</button></div>}
       <DataTable
         columns={columns as unknown as Column<Record<string, unknown>>[]}
         data={visibleProducts as unknown as Record<string, unknown>[]}
+        emptyMessage={loading ? 'Đang tải dữ liệu...' : undefined}
+        remote={{ page, total, perPage: 10, search, onPage: setPage, onSearch: value => { setPage(1); setSearch(value); } }}
         searchPlaceholder="Tìm kiếm theo tên xe, hãng..."
         searchFields={['name', 'brand', 'model']}
-        onEdit={(item) => { const product = item as unknown as Product; setBrand(product.brand); setModel(product.model); setVersion(product.version || ''); setSelectedColor(managedColors.some(color => color.title === product.color) ? product.color : ''); setSlugPreview(slugify(product.name)); setEditItem(product); }}
+        onEdit={(item) => { void openEdit(item as unknown as Product); }}
         onDelete={(item) => setDeleteItem(item as unknown as Product)}
-        onView={(item) => setViewItem(item as unknown as Product)}
+        onView={(item) => { void openView(item as unknown as Product); }}
       />
       </>}
 
@@ -284,7 +357,7 @@ export default function ProductsPage() {
             <FormField label="Tình trạng xe"><Select name="condition" defaultValue={formData.condition || 'Đã qua sử dụng'}><option>Đã qua sử dụng</option><option>Xe mới</option></Select></FormField>
             <FormField label="Trạng thái"><Select name="status" defaultValue={formData.status || 'active'}><option value="active">Đang bán</option><option value="deposit">Đã nhận cọc</option><option value="sold">Đã bán</option><option value="inactive">Ẩn</option></Select></FormField>
           </div>
-          <div className="border-t border-[var(--border-color)] pt-7"><h2 className="mb-5 text-xl font-semibold">Hình ảnh xe</h2><div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><FormField label="Ảnh đại diện"><ImageUpload name="cover" existing={formData.images?.[0] !== '/placeholder-car.jpg' ? formData.images?.[0] : undefined} /></FormField><FormField label="Thư viện ảnh"><ImageUpload name="gallery" multiple maxFiles={10} existing={formData.images?.slice(1).filter(image => image !== '/placeholder-car.jpg')} hint="Tối đa 10 ảnh cho mỗi xe, tính cả ảnh đại diện. Trang xem trước hiển thị 5 ảnh đầu tiên." /></FormField></div></div>
+          <div className="border-t border-[var(--border-color)] pt-7"><h2 className="mb-5 text-xl font-semibold">Hình ảnh xe</h2><div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><FormField label="Ảnh đại diện"><ImageUpload name="cover" existing={formData.images?.[0] !== '/placeholder-car.jpg' ? formData.images?.[0] : undefined} /></FormField><FormField label="Thư viện ảnh"><ImageUpload name="gallery" multiple maxFiles={10} existing={formData.images?.slice(1).filter(image => image !== '/placeholder-car.jpg')} hint="Tối đa 10 ảnh cho mỗi xe, tính cả ảnh đại diện." /></FormField></div></div>
           <div className="border-t border-[var(--border-color)] pt-7">
             <h2 className="mb-5 text-xl font-semibold">Nhãn hiển thị</h2>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
@@ -316,7 +389,7 @@ export default function ProductsPage() {
       <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="Chi tiết sản phẩm" size="md">
         {viewItem && (
           <div className="space-y-4">
-            {viewItem.images?.some(image => image && image !== '/placeholder-car.jpg') && <div className="flex gap-3 overflow-x-auto">{viewItem.images.filter(image => image && image !== '/placeholder-car.jpg').slice(0, 5).map((image, index) => <img key={index} src={image} alt={`${viewItem.name} ${index + 1}`} className="h-40 w-56 rounded-xl object-cover" />)}</div>}
+            {viewItem.images?.some(image => image && image !== '/placeholder-car.jpg') && <div className="flex gap-3 overflow-x-auto">{viewItem.images.filter(image => image && image !== '/placeholder-car.jpg').map((image, index) => <img key={index} src={image} alt={`${viewItem.name} ${index + 1}`} className="h-40 w-56 shrink-0 rounded-xl object-cover" />)}</div>}
             <div className="flex items-center gap-4 p-4 rounded-xl bg-[var(--muted)]">
               <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-red-500 to-amber-500 flex items-center justify-center"><Car className="w-8 h-8 text-white" /></div>
               <div>

@@ -1,21 +1,42 @@
 'use client';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { PageHeader, DataTable, StatusBadge, Modal, ConfirmDialog, Button } from '@/components/ui';
-import { mockMails } from '@/lib/mock-data';
-import { useLocalStore } from '@/lib/local-store';
+import { api, json, query, type PageResult } from '@/lib/api/client';
 import { CheckCircle, Phone, User, Calendar, Car } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Mail } from '@/lib/types';
 import { formatDate } from '@/lib/date';
 
 function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string; subtitle: string }) {
-  const [mails, setMails] = useLocalStore<Mail[]>(`/thu/${type}`, mockMails.filter(m => m.type === type));
+  const [mails, setMails] = useState<Mail[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const newsletter = type === 'dang-ky';
+  const endpoint = newsletter ? '/admin/newsletter-subscribers' : '/admin/leads';
+  const leadType = { 'ban-xe': 'sell', 'len-doi': 'trade_in', 'goi-lai': 'callback', 'dang-ky': '' }[type];
+  const reload = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const result = await api<PageResult<Record<string, unknown>>>(`${endpoint}${query({ page, limit: 10, search, type: leadType })}`);
+      setMails(result.data.map(row => ({ ...row, type, name: String(row.name || row.email || 'Khách hàng'), phone: String(row.phone || ''),
+        carName: String(row.carName || row.offeredModel || ''), currentCar: String(row.currentCar || [row.offeredBrand, row.offeredModel, row.offeredYear].filter(Boolean).join(' ')),
+        desiredCar: String(row.desiredCar || ''), status: String(row.status || 'active'), createdAt: String(row.createdAt || '') })) as Mail[]);
+      setTotal(result.meta.total);
+      window.dispatchEvent(new Event('admin-leads-change'));
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Không thể tải thư.'); setMails([]); }
+    finally { setLoading(false); }
+  }, [endpoint, page, search, leadType, type]);
+  useEffect(() => { queueMicrotask(() => void reload()); }, [reload]);
   const [viewItem, setViewItem] = useState<Mail | null>(null);
   const [deleteItem, setDeleteItem] = useState<Mail | null>(null);
 
-  const markRead = (mail: Mail) => {
-    setMails(prev => prev.map(m => m.id === mail.id ? { ...m, status: 'read' } : m));
-    toast.success('Đã đánh dấu đã đọc');
+  const markRead = async (mail: Mail) => {
+    if (newsletter) return;
+    try { await api(`${endpoint}/${mail.id}`, json('PATCH', { status: 'read' })); await reload(); toast.success('Đã đánh dấu đã đọc'); }
+    catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật.'); }
   };
 
   const columns = [
@@ -45,30 +66,35 @@ function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string
   ];
 
   const unreadCount = mails.filter(m => m.status === 'unread').length;
-  const exportEmails = () => {
-    const csv = '\uFEFFEmail\r\n' + mails.map(mail => `"${String(mail.email || '').replaceAll('"', '""')}"`).join('\r\n');
+  const exportEmails = async () => {
+    try {
+    const csv = await api<string>('/admin/newsletter-subscribers/export');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url; link.download = 'dang-ky-nhan-tin.csv'; link.click(); URL.revokeObjectURL(url);
+    } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể xuất danh sách.'); }
   };
 
   return (
     <div className="space-y-6">
       {!viewItem && <><PageHeader
         title={title}
-        subtitle={`${subtitle} • ${mails.length} thư • ${unreadCount} chưa đọc`}
+        subtitle={`${subtitle} • ${total} thư • ${unreadCount} chưa đọc trên trang`}
         actions={
           type === 'dang-ky' ? <Button variant="secondary" size="sm" onClick={exportEmails}>Xuất danh sách email</Button> :
-          <Button variant="secondary" size="sm" onClick={() => { setMails(prev => prev.map(m => ({ ...m, status: 'read' as const }))); toast.success('Đã đánh dấu tất cả đã đọc'); }}><CheckCircle className="w-4 h-4" /> Đánh dấu tất cả đã đọc</Button>
+          <Button variant="secondary" size="sm" onClick={async () => { try { await Promise.all(mails.filter(m => m.status === 'unread').map(m => api(`${endpoint}/${m.id}`, json('PATCH', { status: 'read' })))); await reload(); toast.success('Đã đánh dấu các thư trên trang là đã đọc'); } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật.'); } }}><CheckCircle className="w-4 h-4" /> Đánh dấu tất cả đã đọc</Button>
         }
       />
 
+      {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error} <button className="underline" onClick={() => void reload()}>Thử lại</button></div>}
       <DataTable
         columns={columns}
         data={mails as unknown as Record<string, unknown>[]}
+        emptyMessage={loading ? 'Đang tải dữ liệu...' : undefined}
+        remote={{ page, total, perPage: 10, search, onPage: setPage, onSearch: value => { setPage(1); setSearch(value); } }}
         searchPlaceholder="Tìm kiếm theo tên, SĐT..."
         searchFields={['name', 'phone', 'email', 'carName', 'desiredCar']}
-        onView={(item) => { const m = item as unknown as Mail; setViewItem(m); if (m.status === 'unread') markRead(m); }}
+        onView={(item) => { const m = item as unknown as Mail; setViewItem(m); if (m.status === 'unread') void markRead(m); }}
         onDelete={(item) => setDeleteItem(item as unknown as Mail)}
       />
       </>}
@@ -100,12 +126,12 @@ function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string
                 <p className="text-sm">{viewItem.content}</p>
               </div>
             )}
-            {viewItem.status !== 'replied' && <div className="flex justify-end"><Button type="button" onClick={() => { setMails(prev => prev.map(mail => mail.id === viewItem.id ? { ...mail, status: 'replied' } : mail)); setViewItem({ ...viewItem, status: 'replied' }); toast.success('Đã đánh dấu đã liên hệ.'); }}>Đánh dấu đã liên hệ</Button></div>}
+            {!newsletter && viewItem.status !== 'replied' && <div className="flex justify-end"><Button type="button" onClick={async () => { try { await api(`${endpoint}/${viewItem.id}`, json('PATCH', { status: 'replied' })); setViewItem({ ...viewItem, status: 'replied' }); await reload(); toast.success('Đã đánh dấu đã liên hệ.'); } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật.'); } }}>Đánh dấu đã liên hệ</Button></div>}
           </div>
         )}
       </Modal>
 
-      <ConfirmDialog open={!!deleteItem} onClose={() => setDeleteItem(null)} onConfirm={() => { if (deleteItem) { setMails(prev => prev.filter(m => m.id !== deleteItem.id)); toast.success('Đã xóa thư!'); setDeleteItem(null); } }} message={`Xóa thư của "${deleteItem?.name}"?`} />
+      <ConfirmDialog open={!!deleteItem} onClose={() => setDeleteItem(null)} onConfirm={async () => { if (deleteItem) { try { await api(`${endpoint}/${deleteItem.id}`, json('DELETE')); toast.success('Đã xóa thư!'); setDeleteItem(null); await reload(); } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể xóa.'); } } }} message={`Xóa thư của "${deleteItem?.name}"?`} />
     </div>
   );
 }

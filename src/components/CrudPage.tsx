@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, ReactNode } from 'react';
+import { useCallback, useEffect, useState, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
-import { useLocalStore, readImage, slugify } from '@/lib/local-store';
+import { slugify } from '@/lib/slug';
+import { deleteResource, listResource, saveResource } from '@/lib/api/resources';
+import { uploadAsset } from '@/lib/api/media';
 import { PageHeader, DataTable, Modal, ConfirmDialog, FormField, Input, Textarea, Select, Button, type Column } from '@/components/ui';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -28,7 +30,6 @@ interface FieldConfig {
 interface CrudPageProps<T> {
   title: string;
   subtitle?: string;
-  data: T[];
   columns: { key: string; label: string; sortable?: boolean; render?: (item: T) => ReactNode; width?: string }[];
   formFields: FieldConfig[];
   searchPlaceholder?: string;
@@ -39,10 +40,23 @@ interface CrudPageProps<T> {
 }
 
 export default function CrudPage<T extends Record<string, unknown>>({
-  title, subtitle, data: initialData, columns, formFields, searchPlaceholder, searchFields, idField = 'id', nameField = 'name', storageKey
+  title, subtitle, columns, formFields, searchPlaceholder, searchFields, idField = 'id', nameField = 'name', storageKey
 }: CrudPageProps<T>) {
   const pathname = usePathname();
-  const [data, setData] = useLocalStore(storageKey || pathname, initialData);
+  const route = storageKey || pathname;
+  const [data, setData] = useState<T[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const reload = useCallback(async () => {
+    setLoading(true); setError('');
+    try { const result = await listResource(route, page, search); setData(result.data as T[]); setTotal(result.meta.total); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Không thể tải dữ liệu.'); setData([]); }
+    finally { setLoading(false); }
+  }, [route, page, search]);
+  useEffect(() => { queueMicrotask(() => void reload()); }, [reload]);
   const [editItem, setEditItem] = useState<T | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [deleteItem, setDeleteItem] = useState<T | null>(null);
@@ -51,11 +65,10 @@ export default function CrudPage<T extends Record<string, unknown>>({
   const hasSlug = editableFields.some(field => field.name === 'slug');
   const slugSourceField = editableFields.some(field => field.name === nameField) ? nameField : 'title';
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deleteItem) {
-      setData(prev => prev.filter(item => item[idField] !== deleteItem[idField]));
-      toast.success('Đã xóa thành công!');
-      setDeleteItem(null);
+      try { await deleteResource(route, deleteItem); toast.success('Đã xóa thành công!'); setDeleteItem(null); await reload(); }
+      catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể xóa.'); }
     }
   };
 
@@ -67,7 +80,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
       for (const field of editableFields) {
         const val = form.get(field.name);
         if (field.type === 'image') {
-          if (val instanceof File && val.size) formDataObj[field.name] = await readImage(val);
+          if (val instanceof File && val.size) formDataObj[field.name] = await uploadAsset(val);
           else formDataObj[field.name] = form.has(`${field.name}__remove`) ? '' : editItem?.[field.name] || '';
         } else if (field.type === 'checkbox') {
           formDataObj[field.name] = form.has(field.name);
@@ -83,7 +96,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
             if (!isVietnamesePhone(phone)) throw new Error('Số điện thoại không hợp lệ. Nhập số di động 10 số hoặc số bàn 10–11 số của Việt Nam.');
             formDataObj[field.name] = normalizeVietnamesePhone(phone);
           } else formDataObj[field.name] = '';
-        } else if (field.type === 'number' || field.name.endsWith('Id')) {
+        } else if (field.type === 'number') {
           const number = val === '' || val === null ? 0 : Number(val);
           if (field.name === 'rating' && (!Number.isInteger(number) || number < 1 || number > 5)) throw new Error('Đánh giá phải là số nguyên từ 1 đến 5.');
           formDataObj[field.name] = number;
@@ -97,34 +110,23 @@ export default function CrudPage<T extends Record<string, unknown>>({
     }
 
     if (hasSlug) {
-      formDataObj.slug = slugify(String(formDataObj[slugSourceField] || ''));
+      formDataObj.slug = editItem?.slug || slugify(String(formDataObj[slugSourceField] || ''));
       if (!formDataObj.slug) {
         toast.error('Tên hoặc tiêu đề cần có chữ hay số để tạo slug.');
         return;
       }
     }
 
-    if (editItem) {
-      setData(prev => prev.map(item =>
-        item[idField] === editItem[idField] ? { ...item, ...formDataObj, ...(Object.hasOwn(item, 'updatedAt') ? { updatedAt: new Date().toISOString().split('T')[0] } : {}) } : item
-      ));
-      toast.success('Đã cập nhật thành công!');
-    } else {
-      const maxId = data.length > 0 ? Math.max(...data.map(d => Number(d[idField]) || 0)) : 0;
-      const today = new Date().toISOString().split('T')[0];
-      const timestamps = Object.hasOwn(initialData[0] || {}, 'createdAt') ? { createdAt: today, updatedAt: today } : {};
-      const nextOrder = Math.max(0, ...data.map(item => Number(item.order) || 0)) + 1;
-      const newItem = { status: 'active', order: nextOrder, ...timestamps, ...formDataObj, [idField]: maxId + 1 } as unknown as T;
-      setData(prev => [newItem, ...prev]);
-      toast.success('Đã thêm mới thành công!');
-    }
+    try { await saveResource(route, formDataObj, editItem); toast.success(editItem ? 'Đã cập nhật thành công!' : 'Đã thêm mới thành công!'); await reload(); }
+    catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể lưu dữ liệu.'); return; }
     setEditItem(null);
     setShowAdd(false);
   };
 
   const isOpen = showAdd || !!editItem;
-  const toggleBoolean = (item: T, field: string) => {
-    setData(previous => previous.map(current => current[idField] === item[idField] ? { ...current, [field]: !Boolean(current[field]) } : current));
+  const toggleBoolean = async (item: T, field: string) => {
+    try { await saveResource(route, { [field]: !Boolean(item[field]) }, item); await reload(); }
+    catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật.'); }
   };
   const listColumns = columns.filter(column => column.key !== 'order' || column.label === 'STT').map(column => ['featured', 'installment'].includes(column.key) ? {
     ...column,
@@ -133,13 +135,16 @@ export default function CrudPage<T extends Record<string, unknown>>({
 
   return (
     <div className="space-y-6">
-      {!isOpen && <><PageHeader title={title} subtitle={subtitle || `${data.length} mục`} actions={
+      {!isOpen && <><PageHeader title={title} subtitle={subtitle || `${total} mục`} actions={
         <Button size="sm" onClick={() => { setSlugPreview(''); setShowAdd(true); }}><Plus className="w-4 h-4" /> Thêm mới</Button>
       } />
 
+      {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error} <button type="button" className="underline" onClick={() => void reload()}>Thử lại</button></div>}
       <DataTable
         columns={listColumns as Column<T>[]}
         data={data}
+        emptyMessage={loading ? 'Đang tải dữ liệu...' : undefined}
+        remote={{ page, total, perPage: 10, search, onPage: setPage, onSearch: value => { setPage(1); setSearch(value); } }}
         searchPlaceholder={searchPlaceholder}
         searchFields={searchFields}
         onEdit={(item) => { setSlugPreview(slugify(String(item[slugSourceField] || ''))); setEditItem(item as T); }}

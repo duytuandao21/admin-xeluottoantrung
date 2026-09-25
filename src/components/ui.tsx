@@ -133,20 +133,21 @@ export interface DataTableProps<T = Record<string, unknown>> {
   searchFields?: string[];
   actions?: (item: T) => ReactNode;
   emptyMessage?: string;
+  remote?: { page: number; total: number; perPage: number; search: string; onPage: (page: number) => void; onSearch: (search: string) => void };
 }
 
 export function DataTable<T extends Record<string, unknown> = Record<string, unknown>>({
-  columns, data, onEdit, onDelete, onView, searchPlaceholder, searchFields, actions, emptyMessage
+  columns, data, onEdit, onDelete, onView, searchPlaceholder, searchFields, actions, emptyMessage, remote
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
-  const perPage = 10;
+  const perPage = remote?.perPage ?? 10;
 
   // Filter
   let filtered = data;
-  if (search && searchFields) {
+  if (!remote && search && searchFields) {
     const q = search.toLowerCase();
     filtered = data.filter(item =>
       searchFields.some(f => String(item[f] || '').toLowerCase().includes(q))
@@ -163,9 +164,10 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
   }
 
   // Paginate
-  const totalPages = Math.ceil(filtered.length / perPage);
-  const currentPage = Math.min(page, Math.max(totalPages, 1));
-  const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const totalPages = Math.ceil((remote?.total ?? filtered.length) / perPage);
+  const currentPage = Math.min(remote?.page ?? page, Math.max(totalPages, 1));
+  const paginated = remote ? filtered : filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const goPage = (next: number) => remote ? remote.onPage(next) : setPage(next);
 
   const handleSort = (key: string) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -180,7 +182,7 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-fg)]" />
             <input
-              type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+              type="text" value={remote?.search ?? search} onChange={e => { if (remote) remote.onSearch(e.target.value); else { setSearch(e.target.value); setPage(1); } }}
               placeholder={searchPlaceholder}
               className="w-full pl-10 pr-4 py-3 rounded-xl border border-[var(--border-color)] bg-[var(--input-bg)] text-base transition-colors"
             />
@@ -246,9 +248,9 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border-color)]">
-          <p className="text-sm text-[var(--muted-fg)]">Hiển thị {(currentPage - 1) * perPage + 1}-{Math.min(currentPage * perPage, filtered.length)} / {filtered.length}</p>
+          <p className="text-sm text-[var(--muted-fg)]">Hiển thị {(currentPage - 1) * perPage + 1}-{Math.min(currentPage * perPage, remote?.total ?? filtered.length)} / {remote?.total ?? filtered.length}</p>
           <div className="flex items-center gap-1">
-            <button disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="p-1.5 rounded-lg hover:bg-[var(--muted)] disabled:opacity-30 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+            <button disabled={currentPage === 1} onClick={() => goPage(currentPage - 1)} className="p-1.5 rounded-lg hover:bg-[var(--muted)] disabled:opacity-30 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
               let p: number;
               if (totalPages <= 5) p = i + 1;
@@ -256,13 +258,13 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
               else if (currentPage >= totalPages - 2) p = totalPages - 4 + i;
               else p = currentPage - 2 + i;
               return (
-                <button key={p} onClick={() => setPage(p)}
+                <button key={p} onClick={() => goPage(p)}
                   className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${p === currentPage ? 'bg-red-600 text-white' : 'hover:bg-[var(--muted)]'}`}>
                   {p}
                 </button>
               );
             })}
-            <button disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)} className="p-1.5 rounded-lg hover:bg-[var(--muted)] disabled:opacity-30 transition-colors"><ChevronRight className="w-4 h-4" /></button>
+            <button disabled={currentPage === totalPages} onClick={() => goPage(currentPage + 1)} className="p-1.5 rounded-lg hover:bg-[var(--muted)] disabled:opacity-30 transition-colors"><ChevronRight className="w-4 h-4" /></button>
           </div>
         </div>
       )}

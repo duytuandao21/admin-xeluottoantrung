@@ -1,10 +1,9 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { mockServices } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
 import { richTextPreview } from '@/lib/rich-text';
 export default function DichVuPage() {
-  return <CrudPage title="Quản lý dịch vụ" data={mockServices as unknown as Record<string, unknown>[]} columns={[
+  return <CrudPage title="Quản lý dịch vụ" columns={[
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'title', label: 'Tên dịch vụ', sortable: true, render: (item) => <span className="font-medium">{String(item.title)}</span> },
     { key: 'description', label: 'Mô tả', render: (item) => <span className="text-sm text-[var(--muted-fg)] truncate max-w-xs block">{richTextPreview(String(item.description))}</span> },

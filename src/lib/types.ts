@@ -8,6 +8,7 @@ export interface Product {
   model: string;
   version?: string;
   branchId?: number;
+  branchName?: string;
   year: number;
   price: number;
   originalPrice?: number;

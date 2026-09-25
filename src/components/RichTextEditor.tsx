@@ -4,36 +4,13 @@ import { useEffect, useRef } from 'react';
 import { Bold, Italic, Underline, List, ListOrdered, Heading2, Quote, Link2, ImagePlus, RemoveFormatting } from 'lucide-react';
 import { toast } from 'sonner';
 import { sanitizeRichText } from '@/lib/rich-text';
+import { uploadAsset } from '@/lib/api/media';
 
 interface RichTextEditorProps {
   name: string;
   defaultValue?: string;
   placeholder?: string;
   required?: boolean;
-}
-
-async function imageToDataUrl(file: File): Promise<string> {
-  if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)) throw new Error('Chỉ hỗ trợ ảnh PNG, JPG, WebP hoặc GIF.');
-  const objectUrl = URL.createObjectURL(file);
-  try {
-    const image = new Image();
-    image.src = objectUrl;
-    await image.decode();
-    for (const maxSide of [1400, 1100, 850]) {
-      const ratio = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(image.naturalWidth * ratio));
-      canvas.height = Math.max(1, Math.round(image.naturalHeight * ratio));
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error('Không thể xử lý ảnh này.');
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/webp', maxSide === 1400 ? 0.82 : 0.7);
-      if (dataUrl.length <= 1_400_000) return dataUrl;
-    }
-    throw new Error('Ảnh quá lớn để lưu trên trình duyệt. Vui lòng chọn ảnh nhỏ hơn.');
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
 }
 
 export default function RichTextEditor({ name, defaultValue = '', placeholder = 'Nhập nội dung...', required }: RichTextEditorProps) {
@@ -78,8 +55,7 @@ export default function RichTextEditor({ name, defaultValue = '', placeholder = 
 
   const insertImage = async (file: File, range?: Range | null) => {
     try {
-      const src = await imageToDataUrl(file);
-      if ((editorRef.current?.innerHTML.length || 0) + src.length > 2_500_000) throw new Error('Nội dung có quá nhiều ảnh để lưu trên trình duyệt. Vui lòng dùng ảnh nhỏ hơn.');
+      const src = await uploadAsset(file);
       insertHtml(`<img src="${src}" alt="Hình ảnh trong nội dung">`, range);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Không thể thêm ảnh.');
@@ -109,28 +85,28 @@ export default function RichTextEditor({ name, defaultValue = '', placeholder = 
   };
 
   const toolbar = [
-    { label: 'In đậm', icon: Bold, run: () => format('bold') },
-    { label: 'In nghiêng', icon: Italic, run: () => format('italic') },
-    { label: 'Gạch chân', icon: Underline, run: () => format('underline') },
-    { label: 'Tiêu đề', icon: Heading2, run: () => format('formatBlock', 'h2') },
-    { label: 'Danh sách', icon: List, run: () => format('insertUnorderedList') },
-    { label: 'Danh sách số', icon: ListOrdered, run: () => format('insertOrderedList') },
-    { label: 'Trích dẫn', icon: Quote, run: () => format('formatBlock', 'blockquote') },
-    { label: 'Liên kết', icon: Link2, run: addLink },
-    { label: 'Xóa định dạng', icon: RemoveFormatting, run: () => format('removeFormat') },
+    { label: 'In đậm', icon: Bold, command: 'bold' },
+    { label: 'In nghiêng', icon: Italic, command: 'italic' },
+    { label: 'Gạch chân', icon: Underline, command: 'underline' },
+    { label: 'Tiêu đề', icon: Heading2, command: 'formatBlock', value: 'h2' },
+    { label: 'Danh sách', icon: List, command: 'insertUnorderedList' },
+    { label: 'Danh sách số', icon: ListOrdered, command: 'insertOrderedList' },
+    { label: 'Trích dẫn', icon: Quote, command: 'formatBlock', value: 'blockquote' },
+    { label: 'Liên kết', icon: Link2, command: 'link' },
+    { label: 'Xóa định dạng', icon: RemoveFormatting, command: 'removeFormat' },
   ];
 
   return (
     <div className="overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--input-bg)]">
       <div className="flex flex-wrap gap-1 border-b border-[var(--border-color)] bg-[var(--card-bg)] p-2">
-        {toolbar.map(({ label, icon: Icon, run }) => (
-          <button key={label} type="button" title={label} aria-label={label} onMouseDown={event => event.preventDefault()} onClick={run} className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--muted-fg)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]">
+        {toolbar.map(({ label, icon: Icon, command, value }) => (
+          <button key={label} type="button" title={label} aria-label={label} onMouseDown={event => event.preventDefault()} onClick={() => command === 'link' ? addLink() : format(command, value)} className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--muted-fg)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]">
             <Icon className="h-4 w-4" />
           </button>
         ))}
         <span className="mx-1 w-px bg-[var(--border-color)]" />
         <button type="button" title="Chèn ảnh" aria-label="Chèn ảnh" onMouseDown={event => event.preventDefault()} onClick={() => { const selection = window.getSelection(); selectionRef.current = selection?.rangeCount ? selection.getRangeAt(0).cloneRange() : null; fileRef.current?.click(); }} className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--muted-fg)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]"><ImagePlus className="h-4 w-4" /></button>
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) void insertImage(file, selectionRef.current); event.target.value = ''; }} />
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) void insertImage(file, selectionRef.current); event.target.value = ''; }} />
       </div>
       <div ref={editorRef} contentEditable suppressContentEditableWarning role="textbox" aria-label={placeholder} aria-multiline="true" aria-required={required} onInput={syncValue} onPaste={event => {
         const image = Array.from(event.clipboardData.files).find(file => file.type.startsWith('image/'));

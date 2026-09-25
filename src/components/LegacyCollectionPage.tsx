@@ -3,34 +3,33 @@
 import { usePathname } from 'next/navigation';
 import CrudPage from '@/components/CrudPage';
 import { StatusBadge } from '@/components/ui';
-import { initialManagedCarColors, resolveCarColorCode } from '@/lib/car-colors';
+import { resolveCarColorCode } from '@/lib/car-colors';
 
 type Kind = 'image' | 'link' | 'text' | 'color';
-type Definition = { title: string; kind: Kind; entries?: string[]; featured?: boolean; description?: boolean };
+type Definition = { title: string; kind: Kind; featured?: boolean; description?: boolean };
 
 const definitions: Record<string, Definition> = {
-  '/quan-ly/gioi-thieu': { title: 'Giới thiệu', kind: 'image', entries: ['Về chúng tôi', 'Chứng nhận', 'Tầm nhìn sứ mệnh', 'Lịch sử hình thành'], description: true },
-  '/quan-ly/thong-ke-noi-dung': { title: 'Nội dung thống kê', kind: 'text', entries: ['500+', '10', '20'] },
+  '/quan-ly/gioi-thieu': { title: 'Giới thiệu', kind: 'image', description: true },
+  '/quan-ly/thong-ke-noi-dung': { title: 'Nội dung thống kê', kind: 'text' },
   '/thiet-lap/banner-dong-xe': { title: 'Banner dòng xe', kind: 'link' },
-  '/thiet-lap/cac-buoc-mua-xe': { title: 'Các bước mua xe', kind: 'image', entries: ['Tiếp nhận yêu cầu và tư vấn', 'Thử xe và đàm phán giá cả', 'Lập hợp đồng mua bán', 'Hoàn tất giao dịch và bàn giao xe'], description: true },
-  '/thiet-lap/cac-buoc-ban-xe': { title: 'Các bước bán xe', kind: 'image', entries: ['Tìm xe của bạn liên hệ và thỏa thuận', 'Thẩm định xe', 'Thương lượng giá cả', 'Hoàn tất giao dịch'], description: true },
+  '/thiet-lap/cac-buoc-mua-xe': { title: 'Các bước mua xe', kind: 'image', description: true },
+  '/thiet-lap/cac-buoc-ban-xe': { title: 'Các bước bán xe', kind: 'image', description: true },
   '/thiet-lap/cac-buoc-len-doi': { title: 'Các bước lên đời', kind: 'image', description: true },
-  '/thiet-lap/chinh-sach-dieu-kien': { title: 'Chính sách và điều kiện', kind: 'image', entries: ['Chính sách quyền riêng tư', 'Điều khoản sử dụng', 'Điều khoản và điều kiện niêm yết'], description: true },
-  '/thiet-lap/kham-pha-xe': { title: 'Khám phá xe', kind: 'image', entries: ['Kiểm định xe kỹ lưỡng với nhiều bước', 'Cam kết xe không đâm đụng, ngập nước', 'Mang đến trải nghiệm dịch vụ tốt nhất', 'Giao xe đến tận nhà'], description: true },
-  '/thiet-lap/quy-trinh-ban-xe': { title: 'Quy trình bán xe', kind: 'image', entries: ['Gửi Thông Tin', 'Nhận Báo Giá', 'Nhận Cọc', 'Thanh Toán'], description: true },
-  '/thiet-lap/tai-sao-chon': { title: 'Tại sao chọn chúng tôi', kind: 'image', entries: ['Làm việc nhanh, đơn giản'], description: true },
-  '/thiet-lap/goi-y-nam-san-xuat': { title: 'Gợi ý năm sản xuất', kind: 'text', entries: ['2013-2015', '2016 - 2018', '2019 - 2021', '2022-2024'] },
-  '/thiet-lap/nut-goi': { title: 'Nút gọi', kind: 'text', entries: ['Thanh Tài', 'Thạch', 'Nam Anh', 'Lem', 'Dương', 'Đức Chí', 'Chẩn', 'Xuân', 'Dâng', 'Oto Toàn Trung'] },
-  '/thiet-lap/mau-sac': { title: 'Màu sắc', kind: 'color', entries: initialManagedCarColors.map(color => color.title) },
-  '/thiet-lap/mang-xa-hoi': { title: 'Mạng xã hội', kind: 'link', entries: ['Facebook', 'YouTube', 'Zalo', 'TikTok'] },
-  '/thiet-lap/ung-dung': { title: 'Ứng dụng', kind: 'link', entries: ['App Store', 'Google Play'] },
+  '/thiet-lap/chinh-sach-dieu-kien': { title: 'Chính sách và điều kiện', kind: 'image', description: true },
+  '/thiet-lap/kham-pha-xe': { title: 'Khám phá xe', kind: 'image', description: true },
+  '/thiet-lap/quy-trinh-ban-xe': { title: 'Quy trình bán xe', kind: 'image', description: true },
+  '/thiet-lap/tai-sao-chon': { title: 'Tại sao chọn chúng tôi', kind: 'image', description: true },
+  '/thiet-lap/goi-y-nam-san-xuat': { title: 'Gợi ý năm sản xuất', kind: 'text' },
+  '/thiet-lap/nut-goi': { title: 'Nút gọi', kind: 'text' },
+  '/thiet-lap/mau-sac': { title: 'Màu sắc', kind: 'color' },
+  '/thiet-lap/mang-xa-hoi': { title: 'Mạng xã hội', kind: 'link' },
+  '/thiet-lap/ung-dung': { title: 'Ứng dụng', kind: 'link' },
 };
 
 export default function LegacyCollectionPage() {
   const pathname = usePathname();
   const config = definitions[pathname];
   if (!config) return null;
-  const data = (config.entries || []).map((title, index) => ({ id: index + 1, title, order: index + 1, status: 'active', image: '', link: '', description: '', colorCode: config.kind === 'color' ? resolveCarColorCode('', title) : '', ...(pathname === '/thiet-lap/nut-goi' ? { phone: '' } : {}), featured: false }));
   const hasImage = config.kind === 'image' || config.kind === 'link';
   const columns = [
     { key: 'order', label: 'STT', sortable: true, width: '70px' },
@@ -52,5 +51,5 @@ export default function LegacyCollectionPage() {
     ...(config.featured ? [{ name: 'featured', label: 'Nổi bật', type: 'checkbox' as const }] : []),
     { name: 'status', label: 'Hiển thị', type: 'select' as const, defaultValue: 'active', options: [{ value: 'active', label: 'Có' }, { value: 'inactive', label: 'Không' }] },
   ];
-  return <CrudPage title={config.title} data={data} columns={columns} formFields={formFields} searchPlaceholder="Tìm kiếm..." searchFields={['title', 'link', 'phone']} nameField="title" />;
+  return <CrudPage title={config.title} columns={columns} formFields={formFields} searchPlaceholder="Tìm kiếm..." searchFields={['title', 'link', 'phone']} nameField="title" />;
 }

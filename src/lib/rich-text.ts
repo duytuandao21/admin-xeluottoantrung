@@ -16,7 +16,7 @@ export function sanitizeRichText(html: string): string {
 
     if (tag === 'img') {
       const src = source.getAttribute('src') || '';
-      if (!/^(https?:\/\/|\/[^/]|data:image\/(?:png|jpeg|webp|gif);base64,)/i.test(src) || src.length > 1_500_000) return null;
+      if (!/^(https?:\/\/|\/[^/])/i.test(src) || src.length > 2_000) return null;
       const image = safeDocument.createElement('img');
       image.setAttribute('src', src);
       image.setAttribute('alt', source.getAttribute('alt') || '');

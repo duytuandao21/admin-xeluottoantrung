@@ -1,21 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, ConfirmDialog, DataTable, FormField, Input, Modal, PageHeader, Select, StatusBadge, type Column } from '@/components/ui';
 import CategoryThumbnail from '@/components/CategoryThumbnail';
 import ImageUpload from '@/components/ImageUpload';
-import { useLocalStore, readImage, slugify } from '@/lib/local-store';
-import { mockCategories, mockProducts, mockSubCategories, mockVersions } from '@/lib/mock-data';
-import type { Category, Product } from '@/lib/types';
+import { slugify } from '@/lib/slug';
+import { api, json } from '@/lib/api/client';
+import { uploadAsset } from '@/lib/api/media';
+import { useResourceRows } from '@/lib/api/use-resource';
+import { listResource } from '@/lib/api/resources';
+import type { Category } from '@/lib/types';
 
 export default function VersionsPage() {
-  const [versions, setVersions] = useLocalStore<Category[]>('/san-pham/phien-ban', mockVersions);
-  const [brands] = useLocalStore<Category[]>('/danh-muc/cap-1', mockCategories);
-  const [models] = useLocalStore<Category[]>('/danh-muc/cap-2', mockSubCategories);
-  const [products, setProducts] = useLocalStore<Product[]>('/san-pham', mockProducts);
+  const [versions, setVersions] = useState<Category[]>([]);
+  const brands = useResourceRows<Category>('/danh-muc/cap-1');
+  const models = useResourceRows<Category>('/danh-muc/cap-2');
+  const [error, setError] = useState('');
+  const reload = async () => {
+    try {
+      const first = await listResource('/san-pham/phien-ban', 1);
+      const rows = [...first.data];
+      for (let page = 2; page <= first.meta.totalPages; page++) rows.push(...(await listResource('/san-pham/phien-ban', page)).data);
+      setVersions(rows as unknown as Category[]); setError('');
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Không thể tải phiên bản xe.'); }
+  };
+  useEffect(() => { queueMicrotask(() => void reload()); }, []);
   const [editing, setEditing] = useState<Category | null>(null);
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<Category | null>(null);
@@ -32,11 +44,6 @@ export default function VersionsPage() {
     return (!filterBrand || String(model?.parentId) === filterBrand) && (!filterModel || String(model?.id) === filterModel);
   });
 
-  const countProducts = (version: Category) => {
-    const model = models.find(candidate => candidate.id === version.parentId);
-    const brand = brands.find(candidate => candidate.id === model?.parentId);
-    return products.filter(product => product.brand === brand?.name && product.model === model?.name && product.version === version.name).length;
-  };
 
   const openAdd = () => {
     setBrandId('');
@@ -78,15 +85,11 @@ export default function VersionsPage() {
       toast.error('Phiên bản này đã có trong dòng xe đã chọn.');
       return;
     }
-    if (editing && editing.parentId !== model.id && countProducts(editing)) {
-      toast.error('Phiên bản đang được xe sử dụng; không thể chuyển sang dòng xe khác.');
-      return;
-    }
 
     let image = editing?.image || '';
     try {
       const file = form.get('image');
-      if (file instanceof File && file.size) image = await readImage(file);
+      if (file instanceof File && file.size) image = await uploadAsset(file);
       else if (form.has('image__remove')) image = '';
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Không thể lưu hình ảnh.');
@@ -94,40 +97,33 @@ export default function VersionsPage() {
     }
 
     const status = form.get('status') === 'inactive' ? 'inactive' as const : 'active' as const;
-    if (editing) {
-      setVersions(previous => previous.map(version => version.id === editing.id ? { ...version, name: trimmedName, slug, parentId: model.id, image, status } : version));
-      if (editing.name !== trimmedName) {
-        setProducts(previous => previous.map(product => product.brand === brand.name && product.model === model.name && product.version === editing.name ? { ...product, version: trimmedName } : product));
-      }
-      toast.success('Đã cập nhật phiên bản xe.');
-    } else {
-      const nextId = Math.max(0, ...versions.map(version => version.id)) + 1;
-      const nextOrder = Math.max(0, ...versions.filter(version => version.parentId === model.id).map(version => version.order)) + 1;
-      setVersions(previous => [{ id: nextId, name: trimmedName, slug, parentId: model.id, image, order: nextOrder, status }, ...previous]);
-      toast.success('Đã thêm phiên bản xe.');
-    }
+    try {
+      await api(editing ? `/admin/lookups/car-versions/${editing.id}` : '/admin/lookups/car-versions', json(editing ? 'PATCH' : 'POST', { name: trimmedName, ...(!editing ? { slug } : {}), modelId: String(model.id), imageUrl: image || null, status }));
+      toast.success(editing ? 'Đã cập nhật phiên bản xe.' : 'Đã thêm phiên bản xe.'); await reload();
+    } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể lưu phiên bản.'); return; }
     closeForm();
   };
 
   const columns: Column<Record<string, unknown>>[] = [
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'name', label: 'Phiên bản', sortable: true, render: item => <div className="flex items-center gap-3"><CategoryThumbnail src={String(item.image || '')} kind="model" /><span className="font-semibold">{String(item.name)}</span></div> },
-    { key: 'brand', label: 'Hãng xe', render: item => { const model = models.find(candidate => candidate.id === Number(item.parentId)); return brands.find(candidate => candidate.id === model?.parentId)?.name || '—'; } },
-    { key: 'model', label: 'Dòng xe', render: item => models.find(candidate => candidate.id === Number(item.parentId))?.name || '—' },
+    { key: 'brand', label: 'Hãng xe', render: item => { const model = models.find(candidate => String(candidate.id) === String(item.parentId)); return brands.find(candidate => String(candidate.id) === String(model?.parentId))?.name || '—'; } },
+    { key: 'model', label: 'Dòng xe', render: item => models.find(candidate => String(candidate.id) === String(item.parentId))?.name || '—' },
     { key: 'slug', label: 'Slug' },
-    { key: 'count', label: 'Số xe', render: item => <span className="font-semibold text-red-600">{countProducts(item as unknown as Category)}</span> },
+    { key: 'count', label: 'Số xe', render: () => <span className="font-semibold text-red-600">—</span> },
     { key: 'status', label: 'Trạng thái', render: item => <StatusBadge status={String(item.status)} /> },
   ];
 
   return (
     <div className="space-y-6">
+      {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error}</div>}
       {!adding && !editing && <>
         <PageHeader title="Phiên bản xe" subtitle={`${versions.length} phiên bản`} actions={<Button size="sm" onClick={openAdd}><Plus className="h-4 w-4" /> Thêm phiên bản</Button>} />
         <div className="flex flex-wrap gap-3">
           <Select value={filterBrand} onChange={event => { setFilterBrand(event.target.value); setFilterModel(''); }} className="max-w-56"><option value="">Tất cả hãng xe</option>{brands.map(brand => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</Select>
           <Select value={filterModel} onChange={event => setFilterModel(event.target.value)} className="max-w-56"><option value="">Tất cả dòng xe</option>{models.filter(model => !filterBrand || String(model.parentId) === filterBrand).map(model => <option key={model.id} value={model.id}>{model.name}</option>)}</Select>
         </div>
-        <DataTable columns={columns} data={filteredVersions as unknown as Record<string, unknown>[]} searchPlaceholder="Tìm phiên bản xe..." searchFields={['name', 'slug']} onEdit={item => openEdit(item as unknown as Category)} onDelete={item => { const version = item as unknown as Category; if (countProducts(version)) toast.error('Không thể xóa phiên bản đang được xe sử dụng.'); else setDeleting(version); }} />
+        <DataTable columns={columns} data={filteredVersions as unknown as Record<string, unknown>[]} searchPlaceholder="Tìm phiên bản xe..." searchFields={['name', 'slug']} onEdit={item => openEdit(item as unknown as Category)} onDelete={item => setDeleting(item as unknown as Category)} />
       </>}
 
       <Modal open={adding || !!editing} onClose={closeForm} title={editing ? 'Sửa phiên bản xe' : 'Thêm phiên bản xe'}>
@@ -154,7 +150,7 @@ export default function VersionsPage() {
           <div className="flex justify-end gap-3 border-t border-[var(--border-color)] pt-4"><Button type="button" variant="secondary" onClick={closeForm}>Hủy</Button><Button type="submit">{editing ? 'Cập nhật' : 'Thêm mới'}</Button></div>
         </form>
       </Modal>
-      <ConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={() => { if (deleting) { setVersions(previous => previous.filter(version => version.id !== deleting.id)); setDeleting(null); toast.success('Đã xóa phiên bản xe.'); } }} message={`Xóa phiên bản "${deleting?.name || ''}"?`} />
+      <ConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={async () => { if (deleting) { try { await api(`/admin/lookups/car-versions/${deleting.id}`, json('DELETE')); setDeleting(null); toast.success('Đã xóa phiên bản xe.'); await reload(); } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể xóa phiên bản.'); } } }} message={`Xóa phiên bản "${deleting?.name || ''}"?`} />
     </div>
   );
 }

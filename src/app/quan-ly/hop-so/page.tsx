@@ -1,9 +1,8 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { mockGearBoxes } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
 export default function HopSoPage() {
-  return <CrudPage title="Quản lý hộp số" data={mockGearBoxes as unknown as Record<string, unknown>[]} columns={[
+  return <CrudPage title="Quản lý hộp số" columns={[
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'name', label: 'Loại hộp số', sortable: true, render: (item) => <span className="font-medium">{String(item.name)}</span> },
     { key: 'slug', label: 'Slug' },

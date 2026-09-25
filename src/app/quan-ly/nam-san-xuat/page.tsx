@@ -1,9 +1,8 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { mockYears } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
 export default function NamSanXuatPage() {
-  return <CrudPage title="Quản lý năm sản xuất" data={mockYears as unknown as Record<string, unknown>[]} columns={[
+  return <CrudPage title="Quản lý năm sản xuất" columns={[
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'name', label: 'Năm sản xuất', sortable: true, render: (item) => <span className="font-semibold">{String(item.name)}</span> },
     { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },

@@ -1,13 +1,12 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { mockNews } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
 export default function TinTucPage() {
-  return <CrudPage title="Quản lý tin tức" data={mockNews as unknown as Record<string, unknown>[]} columns={[
+  return <CrudPage title="Quản lý tin tức" columns={[
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'title', label: 'Tiêu đề', sortable: true, render: (item) => <span className="font-medium text-sm">{String(item.title)}</span> },
     { key: 'category', label: 'Danh mục', render: (item) => <span className="px-2 py-0.5 bg-blue-500/10 text-blue-600 rounded-full text-xs font-medium">{String(item.category)}</span> },
-    { key: 'views', label: 'Lượt xem', sortable: true, render: (item) => <span className="font-semibold">{Number(item.views).toLocaleString()}</span> },
+    { key: 'views', label: 'Lượt xem', render: () => <span className="font-semibold text-[var(--muted-fg)]">—</span> },
     { key: 'featured', label: 'Nổi bật', render: (item) => item.featured ? '★' : '—' },
     { key: 'createdAt', label: 'Ngày đăng', sortable: true },
     { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },

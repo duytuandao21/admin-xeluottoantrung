@@ -1,9 +1,8 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { mockMileages } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
 export default function Page() {
-  return <CrudPage title="Quản lý số km" data={mockMileages as unknown as Record<string, unknown>[]} columns={[
+  return <CrudPage title="Quản lý số km" columns={[
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'name', label: 'Khoảng số km', sortable: true, render: (item) => <span className="font-medium">{String(item.name)}</span> },
     { key: 'slug', label: 'Slug' },

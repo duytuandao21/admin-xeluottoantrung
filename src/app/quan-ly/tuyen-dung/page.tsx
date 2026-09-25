@@ -1,9 +1,8 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { mockRecruitments } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
 export default function TuyenDungPage() {
-  return <CrudPage title="Quản lý tuyển dụng" data={mockRecruitments as unknown as Record<string, unknown>[]} columns={[
+  return <CrudPage title="Quản lý tuyển dụng" columns={[
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'title', label: 'Vị trí', sortable: true, render: (item) => <span className="font-medium">{String(item.title)}</span> },
     { key: 'salary', label: 'Mức lương', render: (item) => <span className="font-semibold text-emerald-600">{String(item.salary || 'Thỏa thuận')}</span> },

@@ -1,35 +1,45 @@
 'use client';
 
 import { StatsCard, PageHeader } from '@/components/ui';
-import { mockDashboardStats, mockProducts, mockMails, mockCustomers, formatPrice, formatNumber } from '@/lib/mock-data';
-import { useLocalStore } from '@/lib/local-store';
-import type { Product, Mail as MailRecord, Customer } from '@/lib/types';
-import { Car, Mail, Eye, Users, TrendingUp, Clock, ArrowUpRight } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { formatPrice } from '@/lib/format';
+import { api, type PageResult } from '@/lib/api/client';
+import { carToProduct, type CarListRecord } from '@/lib/api/cars';
+import type { Product, Mail as MailRecord } from '@/lib/types';
+import { Car, Mail, Eye, Users, Clock, ArrowUpRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ProductThumbnail from '@/components/ProductThumbnail';
 import { formatDate } from '@/lib/date';
 
 export default function DashboardPage() {
-  const [products] = useLocalStore<Product[]>('/san-pham', mockProducts);
-  const [sellMails] = useLocalStore<MailRecord[]>('/thu/ban-xe', mockMails.filter(mail => mail.type === 'ban-xe'));
-  const [tradeMails] = useLocalStore<MailRecord[]>('/thu/len-doi', mockMails.filter(mail => mail.type === 'len-doi'));
-  const [callMails] = useLocalStore<MailRecord[]>('/thu/goi-lai', mockMails.filter(mail => mail.type === 'goi-lai'));
-  const [newsletterMails] = useLocalStore<MailRecord[]>('/thu/dang-ky', mockMails.filter(mail => mail.type === 'dang-ky'));
-  const [customers] = useLocalStore<Customer[]>('/tai-khoan/khach-hang', mockCustomers);
-  const allMails = [...sellMails, ...tradeMails, ...callMails, ...newsletterMails];
-  const stats = { ...mockDashboardStats, totalProducts: products.length, totalMails: allMails.filter(mail => mail.status === 'unread').length, totalCustomers: customers.length, recentMails: [...allMails].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5), topProducts: products.filter(product => product.featured).slice(0, 5) };
+  const [stats, setStats] = useState({ totalProducts: 0, totalMails: 0, totalCustomers: 0, recentMails: [] as MailRecord[], topProducts: [] as Product[] });
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let live = true;
+    void Promise.all([
+      api<{ cars: number; unreadLeads: number; customers: number }>('/admin/dashboard'),
+      Promise.allSettled([
+        api<PageResult<MailRecord>>('/admin/leads?page=1&limit=5'),
+        api<PageResult<CarListRecord>>('/admin/cars?page=1&limit=5&featured=true'),
+      ]),
+    ]).then(([summary, [leadsResult, carsResult]]) => { if (live) setStats({ totalProducts: summary.cars, totalMails: summary.unreadLeads, totalCustomers: summary.customers,
+      recentMails: leadsResult.status === 'fulfilled' ? leadsResult.value.data.map(lead => ({ ...lead, name: lead.name || 'Khách hàng', carName: lead.carName || '', phone: lead.phone || '' })) : [],
+      topProducts: carsResult.status === 'fulfilled' ? carsResult.value.data.filter(car => car.featured).slice(0, 5).map(carToProduct) : [] }); })
+      .catch(failure => { if (live) setError(failure instanceof Error ? failure.message : 'Không thể tải tổng quan.'); });
+    return () => { live = false; };
+  }, []);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Tổng quan" subtitle="Sản phẩm, thư và khách hàng cập nhật theo dữ liệu trình duyệt; lượt truy cập là số liệu minh họa" />
+      <PageHeader title="Tổng quan" subtitle="Sản phẩm, thư và khách hàng cập nhật từ hệ thống" />
+      {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error}</div>}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
-        <StatsCard title="Tổng sản phẩm" value={stats.totalProducts} icon={<Car className="w-6 h-6" />} trend={12} color="red" />
-        <StatsCard title="Tổng thư mới" value={stats.totalMails} icon={<Mail className="w-6 h-6" />} trend={8} color="amber" />
-        <StatsCard title="Lượt truy cập" value={formatNumber(stats.totalViews)} icon={<Eye className="w-6 h-6" />} trend={24} color="blue" />
-        <StatsCard title="Khách hàng" value={stats.totalCustomers} icon={<Users className="w-6 h-6" />} trend={5} color="green" />
+        <StatsCard title="Tổng sản phẩm" value={stats.totalProducts} icon={<Car className="w-6 h-6" />} color="red" />
+        <StatsCard title="Tổng thư mới" value={stats.totalMails} icon={<Mail className="w-6 h-6" />} color="amber" />
+        <StatsCard title="Lượt truy cập" value="—" icon={<Eye className="w-6 h-6" />} color="blue" />
+        <StatsCard title="Khách hàng" value={stats.totalCustomers} icon={<Users className="w-6 h-6" />} color="green" />
       </div>
 
       {/* Chart + Recent Activity */}
@@ -39,31 +49,10 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="font-semibold">Lượt truy cập</h3>
-              <p className="text-sm text-[var(--muted-fg)]">12 tháng gần nhất</p>
-            </div>
-            <div className="flex items-center gap-1 text-emerald-600 text-sm font-medium">
-              <TrendingUp className="w-4 h-4" />
-              +24%
+              <p className="text-sm text-[var(--muted-fg)]">Chưa cấu hình nguồn phân tích truy cập</p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={stats.monthlyViews}>
-              <defs>
-                <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#dc2626" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#dc2626" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-              <XAxis dataKey="month" stroke="var(--muted-fg)" fontSize={12} />
-              <YAxis stroke="var(--muted-fg)" fontSize={12} />
-              <Tooltip
-                contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '12px', fontSize: '13px' }}
-                labelStyle={{ color: 'var(--foreground)' }}
-              />
-              <Area type="monotone" dataKey="views" stroke="#dc2626" strokeWidth={2.5} fillOpacity={1} fill="url(#colorViews)" />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div className="flex h-[280px] items-center justify-center text-sm text-[var(--muted-fg)]">Chưa có dữ liệu lượt truy cập</div>
         </div>
 
         {/* Recent Mails */}

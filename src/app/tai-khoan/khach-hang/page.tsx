@@ -1,10 +1,9 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { mockCustomers } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
 import { formatDate } from '@/lib/date';
 export default function KhachHangPage() {
-  return <CrudPage title="Tài khoản khách hàng" subtitle="Quản lý tài khoản khách hàng" data={mockCustomers as unknown as Record<string, unknown>[]} columns={[
+  return <CrudPage title="Tài khoản khách hàng" subtitle="Quản lý tài khoản khách hàng" columns={[
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'name', label: 'Họ tên', sortable: true, render: (item) => (
       <div className="flex items-center gap-3">
@@ -20,7 +19,7 @@ export default function KhachHangPage() {
   ]} formFields={[
     { name: 'name', label: 'Họ tên', required: true },
     { name: 'email', label: 'Email', required: true },
-    { name: 'phone', label: 'Số điện thoại', required: true },
+    { name: 'phone', label: 'Số điện thoại', type: 'tel', required: true },
     { name: 'address', label: 'Địa chỉ' },
     { name: 'status', label: 'Trạng thái', type: 'select', options: [{ value: 'active', label: 'Hoạt động' }, { value: 'blocked', label: 'Khóa' }] },
   ]} searchPlaceholder="Tìm kiếm khách hàng..." searchFields={['name', 'email', 'phone']} />;

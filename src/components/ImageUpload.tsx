@@ -42,7 +42,7 @@ export default function ImageUpload({ name, existing, multiple = false, maxFiles
   const addFiles = (incoming: FileList | File[]) => {
     const selected = Array.from(incoming);
     if (!selected.length) return;
-    if (selected.some(file => !file.type.startsWith('image/'))) {
+    if (selected.some(file => !['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/vnd.microsoft.icon', 'image/x-icon'].includes(file.type))) {
       syncInput(previews.map(preview => preview.file));
       setError('Vui lòng chọn tệp hình ảnh.');
       return;
@@ -69,7 +69,7 @@ export default function ImageUpload({ name, existing, multiple = false, maxFiles
         id={id}
         name={name}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/avif,image/vnd.microsoft.icon,image/x-icon,.ico"
         multiple={multiple}
         required={required && !visibleExisting.length && !previews.length}
         tabIndex={-1}
@@ -99,7 +99,7 @@ export default function ImageUpload({ name, existing, multiple = false, maxFiles
       >
         <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-950/40"><ImagePlus className="h-6 w-6" aria-hidden="true" /></span>
         <span className="text-base font-semibold text-[var(--foreground)]">Chọn ảnh hoặc kéo thả vào đây</span>
-        <span className="mt-1 text-sm text-[var(--muted-fg)]">{multiple ? `Có thể chọn nhiều ảnh (tối đa ${maxFiles})` : 'PNG, JPG, WebP hoặc ảnh khác'}</span>
+        <span className="mt-1 text-sm text-[var(--muted-fg)]">{multiple ? `Có thể chọn nhiều ảnh (tối đa ${maxFiles})` : 'PNG, JPG, WebP, AVIF hoặc ICO'}</span>
       </label>
       {hint && <p className="text-xs text-[var(--muted-fg)]">{hint}</p>}
       {error && <p role="alert" className="text-xs text-red-600">{error}</p>}

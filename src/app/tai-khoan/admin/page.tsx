@@ -3,16 +3,18 @@ import { PageHeader, Button, FormField, Input } from '@/components/ui';
 import { Save, Shield, Key } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useLocalStore } from '@/lib/local-store';
+import { useAuth } from '@/lib/auth-context';
+import { api, authClient, json } from '@/lib/api/client';
 
 export default function AdminInfoPage() {
   const [showChangePass, setShowChangePass] = useState(false);
-  const [profile, setProfile] = useLocalStore('/tai-khoan/admin', { name: 'Administrator', email: 'admin@xeluottoantrung.com', phone: '0901234567' });
-  const saveProfile = (event: React.FormEvent<HTMLFormElement>) => {
+  const { identity, refresh } = useAuth();
+  const profile = identity?.profile;
+  const saveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    setProfile({ name: String(form.get('name') || '').trim(), email: String(form.get('email') || '').trim(), phone: String(form.get('phone') || '').trim() });
-    toast.success('Đã lưu thông tin trên trình duyệt này.');
+    try { await api('/admin/me', json('PATCH', { fullName: String(form.get('name') || '').trim(), phone: String(form.get('phone') || '').trim() })); await refresh(); toast.success('Đã cập nhật thông tin.'); }
+    catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật thông tin.'); }
   };
 
   return (
@@ -24,13 +26,13 @@ export default function AdminInfoPage() {
         <div className="h-32 gradient-primary relative">
           <div className="absolute -bottom-12 left-6">
             <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-red-500 to-amber-500 flex items-center justify-center text-white text-3xl font-bold border-4 border-[var(--card-bg)] shadow-xl">
-              A
+              {profile?.fullName?.charAt(0).toUpperCase() || 'A'}
             </div>
           </div>
         </div>
         <div className="pt-16 pb-6 px-6">
-          <h2 className="text-xl font-bold">{profile.name}</h2>
-          <p className="text-sm text-[var(--muted-fg)]">{profile.email} • Super Admin</p>
+          <h2 className="text-xl font-bold">{profile?.fullName || ''}</h2>
+          <p className="text-sm text-[var(--muted-fg)]">{profile?.email || ''} • {identity?.roles.join(', ') || ''}</p>
         </div>
       </div>
 
@@ -46,10 +48,10 @@ export default function AdminInfoPage() {
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Tên hiển thị"><Input name="name" defaultValue={profile.name} required /></FormField>
-          <FormField label="Email"><Input name="email" type="email" defaultValue={profile.email} required /></FormField>
-          <FormField label="Số điện thoại"><Input name="phone" defaultValue={profile.phone} /></FormField>
-          <FormField label="Vai trò"><Input defaultValue="Super Admin" disabled /></FormField>
+          <FormField label="Tên hiển thị"><Input key={profile?.fullName} name="name" defaultValue={profile?.fullName || ''} required /></FormField>
+          <FormField label="Email"><Input type="email" value={profile?.email || ''} readOnly /></FormField>
+          <FormField label="Số điện thoại"><Input key={profile?.phone || ''} name="phone" defaultValue={profile?.phone || ''} /></FormField>
+          <FormField label="Vai trò"><Input value={identity?.roles.join(', ') || ''} disabled /></FormField>
         </div>
         <div className="mt-6 flex justify-end">
           <Button type="submit"><Save className="w-4 h-4" /> Lưu thay đổi</Button>
@@ -73,9 +75,11 @@ export default function AdminInfoPage() {
           </Button>
         </div>
         {showChangePass && (
-          <div className="space-y-4 animate-fadeIn">
-            <p className="text-sm text-[var(--muted-fg)]">Chức năng đổi mật khẩu cần kết nối hệ thống xác thực của website. Chưa có máy chủ xác thực trong project hiện tại.</p>
-          </div>
+          <form className="space-y-4 animate-fadeIn" onSubmit={async event => { event.preventDefault(); const form = new FormData(event.currentTarget); const password = String(form.get('password') || ''); if (password !== form.get('confirm')) { toast.error('Mật khẩu xác nhận không khớp.'); return; } const { error } = await authClient().auth.updateUser({ password }); if (error) toast.error(error.message); else { toast.success('Đã đổi mật khẩu.'); setShowChangePass(false); } }}>
+            <FormField label="Mật khẩu mới"><Input name="password" type="password" minLength={8} autoComplete="new-password" required /></FormField>
+            <FormField label="Xác nhận mật khẩu"><Input name="confirm" type="password" minLength={8} autoComplete="new-password" required /></FormField>
+            <Button type="submit">Cập nhật mật khẩu</Button>
+          </form>
         )}
       </div>
     </div>

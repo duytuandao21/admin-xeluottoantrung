@@ -1,12 +1,11 @@
 'use client';
 import { useTheme } from '@/lib/theme-context';
-import { Bell, Sun, Moon, Menu, Key, ExternalLink, Search } from 'lucide-react';
+import { Bell, Sun, Moon, Menu, Key, ExternalLink, Search, LogOut } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useLocalStore } from '@/lib/local-store';
-import { mockMails } from '@/lib/mock-data';
-import type { Mail } from '@/lib/types';
+import { useAuth } from '@/lib/auth-context';
+import { api, type PageResult } from '@/lib/api/client';
 import { menuItems } from '@/components/Sidebar';
 
 export default function Header() {
@@ -16,11 +15,18 @@ export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const router = useRouter();
-  const [sellMails] = useLocalStore<Mail[]>('/thu/ban-xe', mockMails.filter(mail => mail.type === 'ban-xe'));
-  const [tradeMails] = useLocalStore<Mail[]>('/thu/len-doi', mockMails.filter(mail => mail.type === 'len-doi'));
-  const [callMails] = useLocalStore<Mail[]>('/thu/goi-lai', mockMails.filter(mail => mail.type === 'goi-lai'));
-  const [newsletterMails] = useLocalStore<Mail[]>('/thu/dang-ky', mockMails.filter(mail => mail.type === 'dang-ky'));
-  const [profile] = useLocalStore('/tai-khoan/admin', { name: 'Administrator', email: 'admin@xeluottoantrung.com', phone: '0901234567' });
+  const { identity, logout } = useAuth();
+  const profile = { name: identity?.profile.fullName || 'Quản trị viên' };
+  const [counts, setCounts] = useState({ sell: 0, trade_in: 0, callback: 0 });
+  useEffect(() => {
+    let live = true;
+    const loadCounts = () => { void Promise.all((['sell', 'trade_in', 'callback'] as const).map(type => api<PageResult<unknown>>(`/admin/leads?type=${type}&status=unread&limit=1`)))
+      .then(([sell, trade, callback]) => { if (live) setCounts({ sell: sell.meta.total, trade_in: trade.meta.total, callback: callback.meta.total }); })
+      .catch(() => { if (live) setCounts({ sell: 0, trade_in: 0, callback: 0 }); }); };
+    loadCounts();
+    window.addEventListener('admin-leads-change', loadCounts);
+    return () => { live = false; window.removeEventListener('admin-leads-change', loadCounts); };
+  }, []);
   const notifRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
 
@@ -46,10 +52,10 @@ export default function Header() {
   }, []);
 
   const notifications = [
-    { label: 'Thư bán xe', count: sellMails.filter(mail => mail.status === 'unread').length, href: '/thu/ban-xe' },
-    { label: 'Thư lên đời xe', count: tradeMails.filter(mail => mail.status === 'unread').length, href: '/thu/len-doi-xe' },
-    { label: 'Yêu cầu gọi lại', count: callMails.filter(mail => mail.status === 'unread').length, href: '/thu/yeu-cau-goi-lai' },
-    { label: 'Đăng ký nhận tin', count: newsletterMails.filter(mail => mail.status === 'unread').length, href: '/thu/dang-ky-nhan-tin' },
+    { label: 'Thư bán xe', count: counts.sell, href: '/thu/ban-xe' },
+    { label: 'Thư lên đời xe', count: counts.trade_in, href: '/thu/len-doi-xe' },
+    { label: 'Yêu cầu gọi lại', count: counts.callback, href: '/thu/yeu-cau-goi-lai' },
+    { label: 'Đăng ký nhận tin', count: 0, href: '/thu/dang-ky-nhan-tin' },
   ];
   const unreadCount = notifications.reduce((sum, notification) => sum + notification.count, 0);
   const searchPages = menuItems.flatMap(item => item.href ? [{ label: item.label, href: item.href }] : (item.children || []).flatMap(child => child.href ? [{ label: child.label, href: child.href }] : []));
@@ -135,6 +141,7 @@ export default function Header() {
                   <Key className="w-4 h-4 text-[var(--muted-fg)]" />
                   <span>Đổi mật khẩu</span>
                 </Link>
+                <button type="button" onClick={async () => { await logout(); router.replace('/dang-nhap'); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm hover:bg-[var(--muted)]"><LogOut className="w-4 h-4 text-[var(--muted-fg)]" /><span>Đăng xuất</span></button>
               </div>
             )}
           </div>

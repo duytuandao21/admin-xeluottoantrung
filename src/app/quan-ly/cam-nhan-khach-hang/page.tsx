@@ -1,11 +1,10 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { mockTestimonials } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
 import { Star } from 'lucide-react';
 import { richTextPreview } from '@/lib/rich-text';
 export default function CamNhanKHPage() {
-  return <CrudPage title="Cảm nhận khách hàng" data={mockTestimonials as unknown as Record<string, unknown>[]} columns={[
+  return <CrudPage title="Cảm nhận khách hàng" columns={[
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'name', label: 'Khách hàng', sortable: true, render: (item) => <span className="font-medium">{String(item.name)}</span> },
     { key: 'content', label: 'Nội dung', render: (item) => <span className="text-sm text-[var(--muted-fg)] truncate max-w-xs block">{richTextPreview(String(item.content), 60)}</span> },

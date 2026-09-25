@@ -3,7 +3,7 @@ import Link from 'next/link';
 import NextImage from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/lib/theme-context';
-import { useLocalStore } from '@/lib/local-store';
+import { useAuth } from '@/lib/auth-context';
 import {
   LayoutDashboard, Car, FolderTree, Mail, PhoneCall, UserPlus,
   Building2, Shapes, Calendar, Settings2, Briefcase, DollarSign, Wrench,
@@ -204,7 +204,8 @@ function SidebarMenuItem({ item, depth = 0 }: { item: MenuItem; depth?: number }
 
 export default function Sidebar() {
   const { sidebarOpen } = useTheme();
-  const [profile] = useLocalStore('/tai-khoan/admin', { name: 'Administrator', email: 'admin@xeluottoantrung.com', phone: '0901234567' });
+  const { identity } = useAuth();
+  const profile = { name: identity?.profile.fullName || 'Quản trị viên', email: identity?.profile.email || '' };
 
   return (
     <aside

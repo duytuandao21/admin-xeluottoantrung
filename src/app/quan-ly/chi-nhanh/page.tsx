@@ -1,13 +1,11 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { mockBranches } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
 
 export default function ChiNhanhPage() {
   return (
     <CrudPage
       title="Quản lý chi nhánh"
-      data={mockBranches as unknown as Record<string, unknown>[]}
       columns={[
         { key: 'id', label: 'STT', width: '60px' },
         { key: 'name', label: 'Tên chi nhánh', sortable: true, render: (item) => <span className="font-medium">{String(item.name)}</span> },

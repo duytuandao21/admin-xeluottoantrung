@@ -4,10 +4,7 @@ import CrudPage from '@/components/CrudPage';
 import { StatusBadge } from '@/components/ui';
 
 export default function BranchCategoryPage() {
-  return <CrudPage title="Danh mục chi nhánh" data={[
-    { id: 1, name: 'Miền Nam', order: 1, status: 'active' },
-    { id: 2, name: 'Miền Trung', order: 2, status: 'active' },
-  ] as Record<string, unknown>[]} columns={[
+  return <CrudPage title="Danh mục chi nhánh" columns={[
     { key: 'order', label: 'STT', sortable: true },
     { key: 'name', label: 'Tiêu đề', sortable: true },
     { key: 'status', label: 'Hiển thị', render: item => <StatusBadge status={String(item.status)} /> },

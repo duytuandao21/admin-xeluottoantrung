@@ -1,10 +1,9 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { mockFAQs } from '@/lib/mock-data';
 import { StatusBadge } from '@/components/ui';
 import { richTextPreview } from '@/lib/rich-text';
 export default function FAQPage() {
-  return <CrudPage title="Câu hỏi thường gặp" data={mockFAQs as unknown as Record<string, unknown>[]} columns={[
+  return <CrudPage title="Câu hỏi thường gặp" columns={[
     { key: 'id', label: 'STT', width: '60px' },
     { key: 'question', label: 'Câu hỏi', sortable: true, render: (item) => <span className="font-medium text-sm">{String(item.question)}</span> },
     { key: 'answer', label: 'Trả lời', render: (item) => <span className="text-sm text-[var(--muted-fg)] truncate max-w-xs block">{richTextPreview(String(item.answer))}</span> },

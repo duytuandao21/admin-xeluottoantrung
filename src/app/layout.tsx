@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme-context";
 import { Toaster } from "sonner";
+import { AuthProvider } from "@/lib/auth-context";
 
 export const metadata: Metadata = {
   title: "Administrator - TOÀN TRUNG",
@@ -18,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="antialiased">
         <ThemeProvider>
-          <LayoutShell>{children}</LayoutShell>
+          <AuthProvider><LayoutShell>{children}</LayoutShell></AuthProvider>
           <Toaster position="top-right" richColors closeButton />
         </ThemeProvider>
       </body>
