@@ -13,7 +13,9 @@ export interface Product {
   price: number;
   originalPrice?: number;
   mileage: number;
+  seatCount?: number | null;
   transmission: string;
+  transmissionId?: string | null;
   fuel: string;
   color: string;
   status: 'active' | 'inactive' | 'deposit' | 'sold';

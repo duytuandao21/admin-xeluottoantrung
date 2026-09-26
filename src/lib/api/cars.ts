@@ -8,7 +8,9 @@ export function carToProduct(row: CarListRecord): Product {
   return {
     id: row.id as unknown as number, name: String(row.name || ''), slug: String(row.slug || ''), brand: row.brand?.name || '', model: row.model?.name || '',
     version: String(row.version || ''), year: Number(row.year || 0), price: Number(row.price || 0), originalPrice: Number(row.originalPrice || 0),
-    mileage: Number(row.mileage || 0), transmission: String(row.transmission || ''), fuel: String(row.fuel || ''), color: String(row.color || ''),
+    mileage: Number(row.mileage || 0), seatCount: row.seatCount == null ? null : Number(row.seatCount),
+    transmission: String(row.transmission || ''), transmissionId: row.transmissionId == null ? null : String(row.transmissionId),
+    fuel: String(row.fuel || ''), color: String(row.color || ''),
     status: String(row.status || 'inactive') as Product['status'], condition: String(row.condition || ''), images: row.cover ? [row.cover] : [],
     description: String(row.description || ''), licensePlate: String(row.licensePlate || ''), branchId: row.branchId as number | undefined,
     branchName: String(row.branch || ''), createdAt: String(row.createdAt || ''), updatedAt: String(row.updatedAt || ''), featured: Boolean(row.featured), installment: Boolean(row.installment), newArrival: Boolean(row.newArrival),

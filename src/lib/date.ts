@@ -5,7 +5,17 @@ export function formatDate(value: string): string {
   const match = value.match(ISO_DATE);
   if (!match) return value;
   const [, year, month, day, time] = match;
-  return `${day}/${month}/${year}${time ? ` ${time}` : ''}`;
+  // Calendar-only fields (e.g. a deadline) must not shift across time zones.
+  if (!time) return `${day}/${month}/${year}`;
+  let timestamp = value.trim().replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00');
+  if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(timestamp)) timestamp += 'Z';
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return value;
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(date);
+  const part = (type: string) => parts.find(item => item.type === type)?.value;
+  return `${part('day')}/${part('month')}/${part('year')} ${part('hour')}:${part('minute')}`;
 }
 
 export function parseDateInput(value: string): string {

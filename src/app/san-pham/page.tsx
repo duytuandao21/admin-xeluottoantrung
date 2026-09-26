@@ -9,7 +9,7 @@ import { carDetail, carToProduct, deleteCar, listCars, saveCar } from '@/lib/api
 import { uploadCarImage } from '@/lib/api/media';
 import { Plus, Download, Car, Star, CreditCard, Sparkles, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Product, Category, CarAttribute, Branch } from '@/lib/types';
+import type { Product, Category, CarAttribute, GearBox, Branch } from '@/lib/types';
 import ImageUpload from '@/components/ImageUpload';
 import PriceInput from '@/components/PriceInput';
 import ProductThumbnail from '@/components/ProductThumbnail';
@@ -25,6 +25,7 @@ export default function ProductsPage() {
   const [subCategories, setSubCategories] = useState<Category[]>([]);
   const [versions, setVersions] = useState<Category[]>([]);
   const [bodyStyles, setBodyStyles] = useState<CarAttribute[]>([]);
+  const [transmissions, setTransmissions] = useState<GearBox[]>([]);
   const [managedColors, setManagedColors] = useState<ManagedCarColor[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [mediaIds, setMediaIds] = useState<Record<string, string>>({});
@@ -63,11 +64,13 @@ export default function ProductsPage() {
   useEffect(() => {
     void Promise.all([
       api<Category[]>('/admin/brands'), api<Category[]>('/admin/car-models'), all<Category>('/admin/lookups/car-versions'),
-      all<CarAttribute>('/admin/lookups/body-styles'), all<ManagedCarColor>('/admin/lookups/car-colors'), all<Branch>('/admin/lookups/branches'),
-    ]).then(([brands, models, versions, styles, colors, branches]) => {
+      all<CarAttribute>('/admin/lookups/body-styles'), all<GearBox>('/admin/lookups/transmissions'),
+      all<ManagedCarColor>('/admin/lookups/car-colors'), all<Branch>('/admin/lookups/branches'),
+    ]).then(([brands, models, versions, styles, gearboxes, colors, branches]) => {
       setCategories(brands); setSubCategories(models.map(model => ({ ...model, parentId: (model as unknown as { brandId: number }).brandId })));
       setVersions(versions.map(version => ({ ...version, parentId: (version as unknown as { modelId: number }).modelId })));
-      setBodyStyles(styles); setManagedColors(colors.map(color => ({ ...color, title: (color as unknown as { name: string }).name })));
+      setBodyStyles(styles); setTransmissions(gearboxes);
+      setManagedColors(colors.map(color => ({ ...color, title: (color as unknown as { name: string }).name })));
       setBranches(branches);
     }).catch(failure => setError(failure instanceof Error ? failure.message : 'Không thể tải danh mục xe.'));
   }, [all]);
@@ -117,14 +120,23 @@ export default function ProductsPage() {
     try { await saveCar({ [field]: !item[field] }, String(item.id)); await reload(); }
     catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật xe.'); }
   };
+  const openAdd = async () => {
+    try {
+      setTransmissions(await all<GearBox>('/admin/lookups/transmissions'));
+      setBrand(''); setModel(''); setVersion(''); setSelectedColor(''); setSlugPreview(''); setShowAdd(true);
+    } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể tải danh sách hộp số.'); }
+  };
   const openEdit = async (product: Product) => {
     try {
-      const detail = await carDetail(String(product.id));
+      const [detail, gearboxes] = await Promise.all([carDetail(String(product.id)), all<GearBox>('/admin/lookups/transmissions')]);
+      setTransmissions(gearboxes);
       const images = [...detail.media].sort((a, b) => Number(b.isCover) - Number(a.isCover) || a.sortOrder - b.sortOrder);
       setMediaIds(Object.fromEntries(images.map(media => [media.publicUrl, media.id])));
       const hydrated: Product = { ...product, images: images.map(media => media.publicUrl), branchId: detail.branchId as number | undefined,
         color: managedColors.find(color => String(color.id) === detail.colorId)?.title || '',
-        transmission: bodyStyles.length >= 0 ? String((await all<Record<string, unknown>>('/admin/lookups/transmissions')).find(row => row.id === detail.transmissionId)?.name || 'Tự động') : 'Tự động',
+        transmissionId: detail.transmissionId == null ? null : String(detail.transmissionId),
+        transmission: gearboxes.find(row => String(row.id) === String(detail.transmissionId))?.name || '',
+        seatCount: detail.seatCount == null ? null : Number(detail.seatCount),
         condition: String(detail.condition || ''), licensePlate: String(detail.licensePlate || ''), description: String(detail.description || ''), fuel: String(detail.fuel || ''),
         updatedAt: String(detail.updatedAt || ''), originalPrice: Number(detail.originalPrice || 0) };
       setBrand(hydrated.brand); setModel(hydrated.model); setVersion(hydrated.version || ''); setSelectedColor(hydrated.color);
@@ -139,6 +151,7 @@ export default function ProductsPage() {
         branchId: detail.branchId as number | undefined,
         color: managedColors.find(color => String(color.id) === detail.colorId)?.title || product.color,
         condition: String(detail.condition || ''), licensePlate: String(detail.licensePlate || ''),
+        seatCount: detail.seatCount == null ? null : Number(detail.seatCount),
         description: String(detail.description || ''), updatedAt: String(detail.updatedAt || product.updatedAt) });
     } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể tải chi tiết xe.'); }
   };
@@ -169,6 +182,17 @@ export default function ProductsPage() {
       toast.error('Vui lòng chọn màu từ danh sách Quản lý màu sắc.');
       return;
     }
+    const chosenTransmission = transmissions.find(item => String(item.id) === String(data.transmissionId) &&
+      (item.status === 'active' || String(item.id) === editItem?.transmissionId));
+    if (!chosenTransmission) {
+      toast.error('Vui lòng chọn hộp số từ danh sách Quản lý hộp số.');
+      return;
+    }
+    const seatCount = Number(data.seatCount);
+    if (!Number.isInteger(seatCount) || seatCount < 1 || seatCount > 100) {
+      toast.error('Số chỗ ngồi phải là số nguyên từ 1 đến 100.');
+      return;
+    }
     const branchId = String(data.branchId || '');
     const chosenBranch = branches.find(branch => String(branch.id) === branchId && (branch.status === 'active' || branch.id === editItem?.branchId));
     if (branchId && !chosenBranch) {
@@ -191,7 +215,7 @@ export default function ProductsPage() {
       name: String(data.name).trim(), brandId: String(chosenBrand.id), modelId: String(chosenModel.id), versionId: String(chosenVersion.id),
       bodyStyleId: String(selectedBodyStyle?.id), year: Number(data.year), price: Number(String(data.price).replace(/\D/g, '')),
       originalPrice: Number(String(data.originalPrice || '').replace(/\D/g, '')), mileage: Number(String(data.mileage || '').replace(/\D/g, '')),
-      transmissionId: undefined as string | undefined, fuel: String(data.fuel), colorId: String(chosenColor.id),
+      transmissionId: String(chosenTransmission.id), seatCount, fuel: String(data.fuel), colorId: String(chosenColor.id),
       branchId: chosenBranch ? String(chosenBranch.id) : null,
       licensePlate: String(data.licensePlate || ''), condition: String(data.condition || ''),
       status: String(data.status) as Product['status'], description: sanitizeRichText(String(data.description || '')),
@@ -204,8 +228,6 @@ export default function ProductsPage() {
 
     let savedCarId: string | undefined;
     try {
-      const transmissions = await all<Record<string, unknown>>('/admin/lookups/transmissions');
-      fields.transmissionId = String(transmissions.find(item => item.name === data.transmission)?.id || '') || undefined;
       const saved = await saveCar({ ...fields, ...(editItem ? {} : { slug: slugify(fields.name) }) }, editItem ? String(editItem.id) : undefined);
       const carId = String(saved.id);
       savedCarId = carId;
@@ -251,7 +273,7 @@ export default function ProductsPage() {
         actions={
           <>
             <Button variant="secondary" size="sm" onClick={exportCsv}><Download className="w-4 h-4" /> Xuất CSV</Button>
-            <Button size="sm" onClick={() => { setBrand(''); setModel(''); setVersion(''); setSelectedColor(''); setSlugPreview(''); setShowAdd(true); }}><Plus className="w-4 h-4" /> Thêm xe</Button>
+            <Button size="sm" onClick={() => void openAdd()}><Plus className="w-4 h-4" /> Thêm xe</Button>
           </>
         }
       />
@@ -322,11 +344,16 @@ export default function ProductsPage() {
             <FormField label="Số km đã đi">
               <PriceInput name="mileage" defaultValue={formData.mileage} placeholder="VD: 25.000" />
             </FormField>
-            <FormField label="Hộp số">
-              <Select name="transmission" defaultValue={formData.transmission}>
-                <option value="Tự động">Tự động</option>
-                <option value="Số sàn">Số sàn</option>
+            <FormField label="Số chỗ ngồi" required>
+              <Input name="seatCount" type="number" min={1} max={100} step={1} defaultValue={formData.seatCount ?? ''} required placeholder="VD: 5" />
+            </FormField>
+            <FormField label="Hộp số" required>
+              <Select name="transmissionId" defaultValue={formData.transmissionId || ''} required>
+                <option value="">-- Chọn hộp số --</option>
+                {transmissions.filter(item => item.status === 'active' || String(item.id) === formData.transmissionId)
+                  .map(item => <option key={item.id} value={String(item.id)}>{item.name}{item.status !== 'active' ? ' (đã ẩn)' : ''}</option>)}
               </Select>
+              {!transmissions.some(item => item.status === 'active') && <p className="mt-2 text-sm text-[var(--muted-fg)]">Chưa có hộp số hoạt động. <Link href="/quan-ly/hop-so" className="font-medium text-red-600 hover:underline">Quản lý hộp số</Link></p>}
             </FormField>
             <FormField label="Nhiên liệu">
               <Select name="fuel" defaultValue={formData.fuel}>
@@ -404,6 +431,7 @@ export default function ProductsPage() {
                 ['Chi nhánh', getProductBranchName(viewItem)],
                 ['Giá bán', formatPrice(viewItem.price)],
                 ['Số km', `${formatNumber(viewItem.mileage)} km`],
+                ['Số chỗ ngồi', viewItem.seatCount ? `${viewItem.seatCount} chỗ` : '—'],
                 ['Hộp số', viewItem.transmission],
                 ['Nhiên liệu', viewItem.fuel],
                 ['Màu sắc', viewItem.color],
