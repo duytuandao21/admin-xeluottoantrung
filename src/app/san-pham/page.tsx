@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { PageHeader, DataTable, StatusBadge, Modal, ConfirmDialog, FormField, Input, Select, Button, type Column } from '@/components/ui';
 import { formatPrice, formatNumber } from '@/lib/format';
 import { slugify } from '@/lib/slug';
@@ -16,6 +16,7 @@ import ProductThumbnail from '@/components/ProductThumbnail';
 import { formatDate } from '@/lib/date';
 import RichTextEditor, { RichTextContent } from '@/components/RichTextEditor';
 import { sanitizeRichText } from '@/lib/rich-text';
+import { DEFAULT_CAR_DESCRIPTION } from '@/lib/default-car-description';
 import { resolveCarColorCode, type ManagedCarColor } from '@/lib/car-colors';
 import Link from 'next/link';
 
@@ -36,6 +37,8 @@ export default function ProductsPage() {
   const [error, setError] = useState('');
   const [editItem, setEditItem] = useState<Product | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const [deleteItem, setDeleteItem] = useState<Product | null>(null);
   const [viewItem, setViewItem] = useState<Product | null>(null);
   const [brand, setBrand] = useState('');
@@ -164,6 +167,10 @@ export default function ProductsPage() {
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
     const form = new FormData(e.currentTarget);
     const data = Object.fromEntries(form.entries());
     const chosenBrand = categories.find(category => category.name === String(data.brand) && (category.status === 'active' || category.name === editItem?.brand));
@@ -246,6 +253,10 @@ export default function ProductsPage() {
     }
     setEditItem(null);
     setShowAdd(false);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   const formModal = showAdd || editItem;
@@ -298,7 +309,7 @@ export default function ProductsPage() {
       </>}
 
       {/* Add/Edit Modal */}
-      <Modal open={!!formModal} onClose={() => { setEditItem(null); setShowAdd(false); }} title={editItem ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới'} size="lg">
+      <Modal open={!!formModal} onClose={() => { if (savingRef.current) return; setEditItem(null); setShowAdd(false); }} title={editItem ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới'} size="lg">
         <form key={editItem?.id || 'new'} onSubmit={handleSave} className="space-y-8">
           <div><h2 className="text-xl font-semibold">Thông tin xe</h2><p className="mt-1 text-sm text-[var(--muted-fg)]">Nhập thông tin cơ bản, giá bán và trạng thái của xe.</p></div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
@@ -403,11 +414,11 @@ export default function ProductsPage() {
             </div>
           </div>
           <FormField label="Mô tả">
-            <RichTextEditor name="description" defaultValue={formData.description} placeholder="Mô tả chi tiết về xe..." />
+            <RichTextEditor name="description" defaultValue={editItem ? formData.description : DEFAULT_CAR_DESCRIPTION} placeholder="Mô tả chi tiết về xe..." />
           </FormField>
           <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
-            <Button type="button" variant="secondary" onClick={() => { setEditItem(null); setShowAdd(false); }}>Hủy</Button>
-            <Button type="submit">{editItem ? 'Cập nhật' : 'Thêm mới'}</Button>
+            <Button type="button" variant="secondary" disabled={saving} onClick={() => { setEditItem(null); setShowAdd(false); }}>Hủy</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Đang lưu...' : editItem ? 'Cập nhật' : 'Thêm mới'}</Button>
           </div>
         </form>
       </Modal>

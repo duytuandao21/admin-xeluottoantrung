@@ -77,6 +77,13 @@ function payload(resource: Resource, form: Row, editing: boolean): Row {
   }
   if (resource.kind === 'lookup') {
     if (resource.group) data.group = resource.group;
+    if (resource.group === 'budget' && (!editing || data.minPrice !== undefined || data.maxPrice !== undefined)) {
+      const min = data.minPrice;
+      const max = data.maxPrice;
+      if (typeof min !== 'number' || typeof max !== 'number' || !Number.isInteger(min) || !Number.isInteger(max) || min < 0 || max <= min)
+        throw new Error('Giá đến phải lớn hơn giá từ. Nhập đủ hai giá bằng triệu đồng (1 tỷ = 1000 triệu).');
+      data.name = `${min} - ${max} triệu`;
+    }
     if (data.title !== undefined && resource.path.endsWith('/car-colors')) { data.name = data.title; delete data.title; }
     if (data.parentId !== undefined) { data.modelId = data.parentId; delete data.parentId; }
     if (data.minPrice !== undefined) { data.minValue = data.minPrice; delete data.minPrice; }
@@ -87,6 +94,7 @@ function payload(resource: Resource, form: Row, editing: boolean): Row {
   if (resource.kind === 'model') { data.brandId = data.parentId; delete data.parentId; }
   if (resource.kind === 'collection') {
     if (data.author !== undefined) { data.authorName = data.author; delete data.author; }
+    if (resource.path.endsWith('/testimonials') && data.purchaseDate === '') data.purchaseDate = null;
     delete data.category; delete data.views;
   }
   if (resource.kind === 'customer') delete data.lastLogin;

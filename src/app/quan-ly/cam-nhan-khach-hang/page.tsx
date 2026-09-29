@@ -3,6 +3,7 @@ import CrudPage from '@/components/CrudPage';
 import { StatusBadge } from '@/components/ui';
 import { Star } from 'lucide-react';
 import { richTextPreview } from '@/lib/rich-text';
+import { formatDate } from '@/lib/date';
 export default function CamNhanKHPage() {
   return <CrudPage title="Cảm nhận khách hàng" columns={[
     { key: 'id', label: 'STT', width: '60px' },
@@ -11,6 +12,7 @@ export default function CamNhanKHPage() {
     { key: 'rating', label: 'Đánh giá', render: (item) => <div className="flex gap-0.5">{Array.from({ length: Math.max(1, Math.min(5, Number(item.rating) || 1)) }, (_, i) => <Star key={i} className="w-5 h-5 fill-amber-400 text-amber-400" />)}</div> },
     { key: 'featured', label: 'Nổi bật', render: (item) => item.featured ? '★' : '—' },
     { key: 'carBought', label: 'Xe đã mua' },
+    { key: 'purchaseDate', label: 'Ngày mua xe', render: (item) => item.purchaseDate ? formatDate(String(item.purchaseDate)) : '—' },
     { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },
   ]} formFields={[
     { name: 'name', label: 'Tên khách hàng', required: true, placeholder: 'VD: Nguyễn Văn A' },
@@ -18,6 +20,7 @@ export default function CamNhanKHPage() {
     { name: 'content', label: 'Nội dung cảm nhận', type: 'richtext', required: true },
     { name: 'rating', label: 'Đánh giá (1-5)', type: 'number', placeholder: '5' },
     { name: 'carBought', label: 'Xe đã mua', placeholder: 'VD: Toyota Camry 2022' },
+    { name: 'purchaseDate', label: 'Ngày mua xe', type: 'date', placeholder: 'dd/mm/yyyy' },
     { name: 'featured', label: 'Nổi bật', type: 'checkbox' },
     { name: 'status', label: 'Trạng thái', type: 'select', options: [{ value: 'active', label: 'Hiển thị' }, { value: 'inactive', label: 'Ẩn' }] },
   ]} searchPlaceholder="Tìm kiếm..." searchFields={['name', 'content']} />;

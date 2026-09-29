@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -30,6 +30,8 @@ export default function VersionsPage() {
   useEffect(() => { queueMicrotask(() => void reload()); }, []);
   const [editing, setEditing] = useState<Category | null>(null);
   const [adding, setAdding] = useState(false);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<Category | null>(null);
   const [brandId, setBrandId] = useState('');
   const [modelId, setModelId] = useState('');
@@ -61,12 +63,17 @@ export default function VersionsPage() {
   };
 
   const closeForm = () => {
+    if (savingRef.current) return;
     setEditing(null);
     setAdding(false);
   };
 
   const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
     const form = new FormData(event.currentTarget);
     const trimmedName = name.trim();
     const originalModel = models.find(candidate => candidate.id === editing?.parentId);
@@ -101,7 +108,12 @@ export default function VersionsPage() {
       await api(editing ? `/admin/lookups/car-versions/${editing.id}` : '/admin/lookups/car-versions', json(editing ? 'PATCH' : 'POST', { name: trimmedName, ...(!editing ? { slug } : {}), modelId: String(model.id), imageUrl: image || null, status }));
       toast.success(editing ? 'Đã cập nhật phiên bản xe.' : 'Đã thêm phiên bản xe.'); await reload();
     } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể lưu phiên bản.'); return; }
-    closeForm();
+    setEditing(null);
+    setAdding(false);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   const columns: Column<Record<string, unknown>>[] = [
@@ -147,7 +159,7 @@ export default function VersionsPage() {
             <div className="lg:col-span-2"><FormField label="Hình phiên bản"><ImageUpload name="image" existing={editing?.image || ''} /></FormField></div>
             <FormField label="Trạng thái"><Select name="status" defaultValue={editing?.status || 'active'}><option value="active">Hoạt động</option><option value="inactive">Ẩn</option></Select></FormField>
           </div>
-          <div className="flex justify-end gap-3 border-t border-[var(--border-color)] pt-4"><Button type="button" variant="secondary" onClick={closeForm}>Hủy</Button><Button type="submit">{editing ? 'Cập nhật' : 'Thêm mới'}</Button></div>
+          <div className="flex justify-end gap-3 border-t border-[var(--border-color)] pt-4"><Button type="button" variant="secondary" disabled={saving} onClick={closeForm}>Hủy</Button><Button type="submit" disabled={saving}>{saving ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Thêm mới'}</Button></div>
         </form>
       </Modal>
       <ConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={async () => { if (deleting) { try { await api(`/admin/lookups/car-versions/${deleting.id}`, json('DELETE')); setDeleting(null); toast.success('Đã xóa phiên bản xe.'); await reload(); } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể xóa phiên bản.'); } } }} message={`Xóa phiên bản "${deleting?.name || ''}"?`} />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { slugify } from '@/lib/slug';
 import { deleteResource, listResource, saveResource } from '@/lib/api/resources';
@@ -21,6 +21,7 @@ interface FieldConfig {
   type?: 'text' | 'number' | 'textarea' | 'richtext' | 'select' | 'color' | 'image' | 'url' | 'email' | 'date' | 'checkbox' | 'tel';
   required?: boolean;
   placeholder?: string;
+  hint?: string;
   options?: { value: string; label: string }[];
   defaultValue?: string | number;
   min?: number;
@@ -61,6 +62,8 @@ export default function CrudPage<T extends Record<string, unknown>>({
   const [showAdd, setShowAdd] = useState(false);
   const [deleteItem, setDeleteItem] = useState<T | null>(null);
   const [slugPreview, setSlugPreview] = useState('');
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const editableFields = formFields.filter(field => field.name !== 'order' && field.name !== idField);
   const hasSlug = editableFields.some(field => field.name === 'slug');
   const slugSourceField = editableFields.some(field => field.name === nameField) ? nameField : 'title';
@@ -74,6 +77,10 @@ export default function CrudPage<T extends Record<string, unknown>>({
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
     const form = new FormData(e.currentTarget);
     const formDataObj: Record<string, unknown> = {};
     try {
@@ -82,6 +89,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
         if (field.type === 'image') {
           if (val instanceof File && val.size) formDataObj[field.name] = await uploadAsset(val);
           else formDataObj[field.name] = form.has(`${field.name}__remove`) ? '' : editItem?.[field.name] || '';
+          if (field.required && !formDataObj[field.name]) throw new Error(`Vui lòng chọn ${field.label.toLowerCase()}.`);
         } else if (field.type === 'checkbox') {
           formDataObj[field.name] = form.has(field.name);
         } else if (field.type === 'richtext') {
@@ -121,6 +129,10 @@ export default function CrudPage<T extends Record<string, unknown>>({
     catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể lưu dữ liệu.'); return; }
     setEditItem(null);
     setShowAdd(false);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   const isOpen = showAdd || !!editItem;
@@ -151,7 +163,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
         onDelete={(item) => setDeleteItem(item as T)}
       /></>}
 
-      <Modal open={isOpen} onClose={() => { setEditItem(null); setShowAdd(false); }} title={editItem ? `Sửa ${title.toLowerCase()}` : `Thêm ${title.toLowerCase()}`} size="md">
+      <Modal open={isOpen} onClose={() => { if (savingRef.current) return; setEditItem(null); setShowAdd(false); }} title={editItem ? `Sửa ${title.toLowerCase()}` : `Thêm ${title.toLowerCase()}`} size="md">
         <form key={editItem ? String(editItem[idField]) : 'new'} onSubmit={handleSave} className="space-y-7">
           <div className="border-b border-[var(--border-color)] pb-5"><h2 className="text-xl font-semibold">Thông tin {title.toLowerCase()}</h2><p className="mt-1 text-sm text-[var(--muted-fg)]">Các trường có dấu * là bắt buộc.</p></div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
@@ -167,7 +179,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
                     {field.options?.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </Select>
                 ) : field.type === 'image' ? (
-                  <ImageUpload name={field.name} existing={String(editItem?.[field.name] || '')} required={field.required} />
+                  <ImageUpload name={field.name} existing={String(editItem?.[field.name] || '')} hint={field.hint} />
                 ) : field.type === 'color' ? (
                   <ColorCodeInput name={field.name} defaultValue={String(editItem?.[field.name] || field.defaultValue || '')} colorName={String(editItem?.title || '')} />
                 ) : field.type === 'date' ? (
@@ -183,8 +195,8 @@ export default function CrudPage<T extends Record<string, unknown>>({
             ))}
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
-            <Button type="button" variant="secondary" onClick={() => { setEditItem(null); setShowAdd(false); }}>Hủy</Button>
-            <Button type="submit">{editItem ? 'Cập nhật' : 'Thêm mới'}</Button>
+            <Button type="button" variant="secondary" disabled={saving} onClick={() => { setEditItem(null); setShowAdd(false); }}>Hủy</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Đang lưu...' : editItem ? 'Cập nhật' : 'Thêm mới'}</Button>
           </div>
         </form>
       </Modal>

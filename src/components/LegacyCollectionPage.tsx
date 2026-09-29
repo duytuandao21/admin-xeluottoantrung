@@ -32,7 +32,7 @@ export default function LegacyCollectionPage() {
   if (!config) return null;
   const hasImage = config.kind === 'image' || config.kind === 'link';
   const columns = [
-    { key: 'order', label: 'STT', sortable: true, width: '70px' },
+    { key: 'order', label: pathname === '/thiet-lap/quy-trinh-ban-xe' ? 'Thứ tự' : 'STT', sortable: true, width: '70px' },
     ...(hasImage ? [{ key: 'image', label: 'Hình', render: (item: Record<string, unknown>) => item.image ? <img src={String(item.image)} alt="" className="h-10 w-16 rounded object-cover" /> : <span className="text-[var(--muted-fg)]">—</span> }] : []),
     { key: 'title', label: 'Tiêu đề', sortable: true, render: (item: Record<string, unknown>) => <span className="font-medium">{String(item.title)}</span> },
     ...(config.kind === 'link' ? [{ key: 'link', label: 'Link' }] : []),
@@ -48,6 +48,7 @@ export default function LegacyCollectionPage() {
     ...(config.kind === 'color' ? [{ name: 'colorCode', label: 'Mã màu', type: 'color' as const }] : []),
     ...(pathname === '/thiet-lap/nut-goi' ? [{ name: 'phone', label: 'Số điện thoại', type: 'tel' as const, required: true, placeholder: 'VD: 0912345678 hoặc +84912345678' }] : []),
     ...(config.description ? [{ name: 'description', label: 'Nội dung', type: 'richtext' as const }] : []),
+    ...(pathname === '/thiet-lap/quy-trinh-ban-xe' ? [{ name: 'sortOrder', label: 'Thứ tự hiển thị', type: 'number' as const, defaultValue: 0, min: 0 }] : []),
     ...(config.featured ? [{ name: 'featured', label: 'Nổi bật', type: 'checkbox' as const }] : []),
     { name: 'status', label: 'Hiển thị', type: 'select' as const, defaultValue: 'active', options: [{ value: 'active', label: 'Có' }, { value: 'inactive', label: 'Không' }] },
   ];

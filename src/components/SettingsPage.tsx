@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useCallback, useEffect, useState } from 'react';
+import { Fragment, ReactNode, useCallback, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { PageHeader, Button, FormField, Input, Textarea, Select } from '@/components/ui';
 import { ApiError, api, json, query } from '@/lib/api/client';
@@ -11,9 +11,10 @@ import ImageUpload from '@/components/ImageUpload';
 import RichTextEditor from '@/components/RichTextEditor';
 import { sanitizeRichText } from '@/lib/rich-text';
 
-interface SettingsField {
+export interface SettingsField {
   name: string;
   label: string;
+  section?: string;
   type?: 'text' | 'textarea' | 'richtext' | 'number' | 'file' | 'color' | 'url' | 'select' | 'email';
   defaultValue?: string;
   placeholder?: string;
@@ -23,7 +24,7 @@ interface SettingsField {
 
 export default function SettingsPage({ title, subtitle, fields, children }: { title: string; subtitle?: string; fields: SettingsField[]; children?: ReactNode }) {
   const pathname = usePathname();
-  const defaults = Object.fromEntries(fields.map(field => [field.name, '']));
+  const defaults = Object.fromEntries(fields.map(field => [field.name, field.defaultValue ?? '']));
   const [values, setValues] = useState<Record<string, string>>(defaults);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
@@ -38,7 +39,11 @@ export default function SettingsPage({ title, subtitle, fields, children }: { ti
         setValues({ ...defaults, ...(item ? { title: String(item.metaTitle || ''), description: String(item.metaDescription || ''), keywords: String(item.keywords || ''), ogImage: String(item.ogImageUrl || ''), canonical: String(item.canonicalUrl || '') } : {}) });
       } else {
         const rows = await api<{ key: string; value: string }[]>(`/admin/site-settings/${group}`);
-        setValues({ ...defaults, ...Object.fromEntries(rows.map(row => [row.key, row.value])) });
+        const saved = Object.fromEntries(rows.map(row => [row.key, row.value]));
+        if (group === 'thiet-lap-footer') for (const key of ['footerAbout', 'footerAddress', 'footerPhone']) {
+          if (saved[key] === '') delete saved[key];
+        }
+        setValues({ ...defaults, ...saved });
       }
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Không thể tải dữ liệu.'); }
     finally { setLoaded(true); }
@@ -63,10 +68,16 @@ export default function SettingsPage({ title, subtitle, fields, children }: { ti
           updated[field.name] = String(entry ?? '').trim();
         }
       }
+      if (group === 'thiet-lap-footer') for (const field of fields) {
+        if (!/(Href|Url)$/.test(field.name) || !updated[field.name]) continue;
+        if (!/^(https:\/\/[^\s]+|\/(?!\/)[^\s]*|#[a-z0-9-]+|mailto:[^\s@]+@[^\s@]+)$/i.test(updated[field.name]))
+          throw new Error(`${field.label} phải là liên kết HTTPS, đường dẫn nội bộ hoặc vị trí # trong trang.`);
+      }
       if (isSeo) {
         await api('/admin/seo', json('PUT', { routePath: seoRoute[pathname] || pathname, metaTitle: updated.title || null, metaDescription: updated.description || null, keywords: updated.keywords || null, ogImageUrl: updated.ogImage || null, canonicalUrl: updated.canonical || null }));
       } else {
-        await Promise.all(fields.map(field => api(`/admin/site-settings/${group}/${field.name}`, json('PUT', { value: updated[field.name] || '', valueType: field.type === 'number' && updated[field.name] ? 'number' : 'text' }))));
+        const changed = fields.filter(field => updated[field.name] !== values[field.name]);
+        await Promise.all(changed.map(field => api(`/admin/site-settings/${group}/${field.name}`, json('PUT', { value: updated[field.name] || '', valueType: field.type === 'number' && updated[field.name] ? 'number' : 'text' }))));
       }
       setValues(updated);
       toast.success('Đã lưu thay đổi.');
@@ -83,8 +94,10 @@ export default function SettingsPage({ title, subtitle, fields, children }: { ti
       {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error} <button className="underline" onClick={() => void load()}>Thử lại</button></div>}
       <form id="settings-form" onSubmit={handleSave} className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-6">
         {loaded && <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {fields.map(field => (
-            <div key={field.name} className={field.type === 'textarea' || field.type === 'richtext' || field.type === 'file' ? 'md:col-span-2' : ''}>
+          {fields.map((field, index) => (
+            <Fragment key={field.name}>
+            {field.section && field.section !== fields[index - 1]?.section && <h2 className="md:col-span-2 mt-4 border-b border-[var(--border-color)] pb-3 text-lg font-semibold">{field.section}</h2>}
+            <div className={field.type === 'textarea' || field.type === 'richtext' || field.type === 'file' ? 'md:col-span-2' : ''}>
               <FormField label={field.label}>
                 {field.type === 'richtext' ? (
                   <RichTextEditor name={field.name} defaultValue={values[field.name] ?? ''} placeholder={field.placeholder} />
@@ -102,7 +115,9 @@ export default function SettingsPage({ title, subtitle, fields, children }: { ti
                   <Input name={field.name} type={field.type || 'text'} defaultValue={values[field.name] ?? ''} placeholder={field.placeholder} />
                 )}
               </FormField>
+              {field.hint && <p className="mt-1 text-sm text-[var(--muted-fg)]">{field.hint}</p>}
             </div>
+            </Fragment>
           ))}
         </div>}
         {children}
