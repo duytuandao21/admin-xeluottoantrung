@@ -36,6 +36,14 @@ export const menuItems: MenuItem[] = [
     ]
   },
   {
+    label: 'Phụ kiện ô tô', icon: ShoppingCart, children: [
+      { label: 'Danh sách phụ kiện', href: '/phu-kien-o-to', icon: ShoppingCart },
+      { label: 'Danh mục phụ kiện', href: '/phu-kien-o-to/danh-muc', icon: FolderTree },
+      { label: 'Thương hiệu phụ kiện', href: '/phu-kien-o-to/thuong-hieu', icon: Factory },
+      { label: 'Cửa hàng lắp đặt', href: '/phu-kien-o-to/cua-hang-lap-dat', icon: Building2 },
+    ]
+  },
+  {
     label: 'Bộ lọc xe', icon: SlidersHorizontal, children: [
       { label: 'Kiểu dáng', href: '/quan-ly/kieu-dang', icon: Shapes },
       { label: 'Ngân sách', href: '/quan-ly/ngan-sach', icon: DollarSign },

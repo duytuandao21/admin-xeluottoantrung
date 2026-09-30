@@ -23,6 +23,10 @@ const resources: Record<string, Resource> = {
   '/quan-ly/danh-muc-chi-nhanh': lookup('branch-regions'),
   '/quan-ly/chi-nhanh': lookup('branches'),
   '/san-pham/phien-ban': lookup('car-versions'),
+  '/san-pham/phu-kien-o-to': collection('accessories'),
+  '/phu-kien-o-to': collection('accessories'),
+  '/phu-kien-o-to/danh-muc': collection('accessory-categories'),
+  '/phu-kien-o-to/thuong-hieu': collection('accessory-brands'),
   '/quan-ly/tin-tuc': collection('articles'),
   '/quan-ly/cau-hoi-thuong-gap': collection('faqs'),
   '/quan-ly/cam-nhan-khach-hang': collection('testimonials'),
@@ -96,6 +100,8 @@ function payload(resource: Resource, form: Row, editing: boolean): Row {
     if (data.author !== undefined) { data.authorName = data.author; delete data.author; }
     if (resource.path.endsWith('/testimonials') && data.purchaseDate === '') data.purchaseDate = null;
     delete data.category; delete data.views;
+    if (resource.path.endsWith('/accessories') && data.categoryId === '') data.categoryId = null;
+    if (resource.path.endsWith('/accessory-brands') && data.imageUrl === '' && editing) data.imageUrl = null;
   }
   if (resource.kind === 'customer') delete data.lastLogin;
   if (editing) delete data.slug;

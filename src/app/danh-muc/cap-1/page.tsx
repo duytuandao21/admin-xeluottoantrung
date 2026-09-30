@@ -13,7 +13,7 @@ export default function Category1Page() {
         { key: 'id', label: 'STT', width: '60px', sortable: true },
         { key: 'name', label: 'Tên hãng', sortable: true, render: (item) => <div className="flex items-center gap-3"><CategoryThumbnail src={String(item.image || '')} kind="brand" /><span className="font-semibold">{String(item.name)}</span></div> },
         { key: 'slug', label: 'Slug' },
-        { key: 'count', label: 'Số xe', render: (item) => <span className="font-semibold text-red-600">{String(item.count ?? '—')}</span> },
+        { key: 'count', label: 'Số xe', render: (item) => <span className="font-semibold text-red-600">{Number(item.count ?? 0).toLocaleString('vi-VN')}</span> },
         { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },
       ]}
       formFields={[

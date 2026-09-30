@@ -20,7 +20,7 @@ export default function Category2Page() {
         { key: 'parentId', label: 'Hãng xe', render: (item) => { const parent = categories.find(c => String(c.id) === String(item.parentId)); return <span className="text-[var(--muted-fg)]">{parent?.name || '—'}</span>; } },
         { key: 'bodyStyleId', label: 'Kiểu dáng', render: (item) => bodyStyles.find(style => String(style.id) === String(item.bodyStyleId))?.name || 'Chưa chọn' },
         { key: 'slug', label: 'Slug' },
-        { key: 'count', label: 'Số xe', render: (item) => <span className="font-semibold text-red-600">{String(item.count ?? '—')}</span> },
+        { key: 'count', label: 'Số xe', render: (item) => <span className="font-semibold text-red-600">{Number(item.count ?? 0).toLocaleString('vi-VN')}</span> },
         { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },
       ]}
       formFields={[

@@ -15,7 +15,7 @@ export interface SettingsField {
   name: string;
   label: string;
   section?: string;
-  type?: 'text' | 'textarea' | 'richtext' | 'number' | 'file' | 'color' | 'url' | 'select' | 'email';
+  type?: 'text' | 'textarea' | 'richtext' | 'number' | 'file' | 'color' | 'url' | 'select' | 'email' | 'tel';
   defaultValue?: string;
   placeholder?: string;
   options?: { value: string; label: string }[];
@@ -72,6 +72,18 @@ export default function SettingsPage({ title, subtitle, fields, children }: { ti
         if (!/(Href|Url)$/.test(field.name) || !updated[field.name]) continue;
         if (!/^(https:\/\/[^\s]+|\/(?!\/)[^\s]*|#[a-z0-9-]+|mailto:[^\s@]+@[^\s@]+)$/i.test(updated[field.name]))
           throw new Error(`${field.label} phải là liên kết HTTPS, đường dẫn nội bộ hoặc vị trí # trong trang.`);
+      }
+      if (group === 'phu-kien-o-to-cua-hang-lap-dat') {
+        if (updated.mapUrl && !/^https:\/\/\S+$/i.test(updated.mapUrl))
+          throw new Error('Liên kết Google Maps phải bắt đầu bằng https://.');
+        if (updated.phone && !/^[+\d().\s-]{9,30}$/.test(updated.phone))
+          throw new Error('Số điện thoại cửa hàng không hợp lệ.');
+      }
+      if (group === 'thiet-lap-thong-tin') for (const key of ['phone', 'zalo']) {
+        const value = updated[key]?.trim() || '';
+        const digits = value.replace(/\D/g, '');
+        if (value && (!/^[+\d()\s.-]+$/.test(value) || digits.length < 9 || digits.length > 12))
+          throw new Error(`${key === 'phone' ? 'Số điện thoại' : 'Số Zalo'} không hợp lệ.`);
       }
       if (isSeo) {
         await api('/admin/seo', json('PUT', { routePath: seoRoute[pathname] || pathname, metaTitle: updated.title || null, metaDescription: updated.description || null, keywords: updated.keywords || null, ogImageUrl: updated.ogImage || null, canonicalUrl: updated.canonical || null }));

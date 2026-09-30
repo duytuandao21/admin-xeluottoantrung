@@ -122,7 +122,7 @@ export default function VersionsPage() {
     { key: 'brand', label: 'Hãng xe', render: item => { const model = models.find(candidate => String(candidate.id) === String(item.parentId)); return brands.find(candidate => String(candidate.id) === String(model?.parentId))?.name || '—'; } },
     { key: 'model', label: 'Dòng xe', render: item => models.find(candidate => String(candidate.id) === String(item.parentId))?.name || '—' },
     { key: 'slug', label: 'Slug' },
-    { key: 'count', label: 'Số xe', render: () => <span className="font-semibold text-red-600">—</span> },
+    { key: 'count', label: 'Số xe', render: item => <span className="font-semibold text-red-600">{Number(item.count ?? 0).toLocaleString('vi-VN')}</span> },
     { key: 'status', label: 'Trạng thái', render: item => <StatusBadge status={String(item.status)} /> },
   ];
 

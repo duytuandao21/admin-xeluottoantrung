@@ -9,6 +9,7 @@ import { PageHeader, DataTable, Modal, ConfirmDialog, FormField, Input, Textarea
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import ImageUpload from '@/components/ImageUpload';
+import PriceInput from '@/components/PriceInput';
 import ColorCodeInput from '@/components/ColorCodeInput';
 import { isVietnamesePhone, normalizeVietnamesePhone } from '@/lib/phone';
 import { formatDate, parseDateInput } from '@/lib/date';
@@ -18,7 +19,7 @@ import { hasRichTextContent, sanitizeRichText } from '@/lib/rich-text';
 interface FieldConfig {
   name: string;
   label: string;
-  type?: 'text' | 'number' | 'textarea' | 'richtext' | 'select' | 'color' | 'image' | 'url' | 'email' | 'date' | 'checkbox' | 'tel';
+  type?: 'text' | 'number' | 'price' | 'textarea' | 'richtext' | 'select' | 'color' | 'image' | 'images' | 'url' | 'email' | 'date' | 'checkbox' | 'tel';
   required?: boolean;
   placeholder?: string;
   hint?: string;
@@ -38,10 +39,11 @@ interface CrudPageProps<T> {
   idField?: string;
   nameField?: string;
   storageKey?: string;
+  statusToggle?: boolean;
 }
 
 export default function CrudPage<T extends Record<string, unknown>>({
-  title, subtitle, columns, formFields, searchPlaceholder, searchFields, idField = 'id', nameField = 'name', storageKey
+  title, subtitle, columns, formFields, searchPlaceholder, searchFields, idField = 'id', nameField = 'name', storageKey, statusToggle = false
 }: CrudPageProps<T>) {
   const pathname = usePathname();
   const route = storageKey || pathname;
@@ -90,6 +92,12 @@ export default function CrudPage<T extends Record<string, unknown>>({
           if (val instanceof File && val.size) formDataObj[field.name] = await uploadAsset(val);
           else formDataObj[field.name] = form.has(`${field.name}__remove`) ? '' : editItem?.[field.name] || '';
           if (field.required && !formDataObj[field.name]) throw new Error(`Vui lòng chọn ${field.label.toLowerCase()}.`);
+        } else if (field.type === 'images') {
+          const existing = Array.isArray(editItem?.[field.name]) ? editItem[field.name] as string[] : [];
+          const removed = new Set(form.getAll(`${field.name}__removeIndex`).map(Number));
+          const kept = existing.filter((_, index) => !removed.has(index));
+          const files = form.getAll(field.name).filter((value): value is File => value instanceof File && value.size > 0);
+          formDataObj[field.name] = [...kept, ...await Promise.all(files.map(uploadAsset))];
         } else if (field.type === 'checkbox') {
           formDataObj[field.name] = form.has(field.name);
         } else if (field.type === 'richtext') {
@@ -107,6 +115,12 @@ export default function CrudPage<T extends Record<string, unknown>>({
         } else if (field.type === 'number') {
           const number = val === '' || val === null ? 0 : Number(val);
           if (field.name === 'rating' && (!Number.isInteger(number) || number < 1 || number > 5)) throw new Error('Đánh giá phải là số nguyên từ 1 đến 5.');
+          formDataObj[field.name] = number;
+        } else if (field.type === 'price') {
+          const digits = String(val || '').replace(/\D/g, '');
+          const number = Number(digits);
+          if (!digits || !Number.isSafeInteger(number) || number < (field.min ?? 0) || (field.max !== undefined && number > field.max))
+            throw new Error(`Vui lòng nhập ${field.label.toLowerCase()} hợp lệ.`);
           formDataObj[field.name] = number;
         } else {
           formDataObj[field.name] = String(val || (field.name === 'status' ? field.options?.[0]?.value || '' : '')).trim();
@@ -140,7 +154,14 @@ export default function CrudPage<T extends Record<string, unknown>>({
     try { await saveResource(route, { [field]: !Boolean(item[field]) }, item); await reload(); }
     catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật.'); }
   };
-  const listColumns = columns.filter(column => column.key !== 'order' || column.label === 'STT').map(column => ['featured', 'installment'].includes(column.key) ? {
+  const toggleStatus = async (item: T) => {
+    try { await saveResource(route, { status: item.status === 'active' ? 'inactive' : 'active' }, item); await reload(); }
+    catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật hiển thị.'); }
+  };
+  const listColumns = columns.filter(column => column.key !== 'order' || column.label === 'STT').map(column => statusToggle && column.key === 'status' ? {
+    ...column,
+    render: (item: T) => <button type="button" role="switch" aria-checked={item.status === 'active'} aria-label={`Hiển thị ${String(item.title || item.name || '')}`} onClick={() => void toggleStatus(item)} className="inline-flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 dark:hover:bg-slate-800"><span className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${item.status === 'active' ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-600'}`}><span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${item.status === 'active' ? 'translate-x-6' : 'translate-x-1'}`} /></span><span className="text-sm">{item.status === 'active' ? 'Hiển thị' : 'Ẩn'}</span></button>,
+  } : ['featured', 'installment'].includes(column.key) ? {
     ...column,
     render: (item: T) => <button type="button" role="switch" aria-checked={Boolean(item[column.key])} aria-label={`${column.label}: ${Boolean(item[column.key]) ? 'Bật' : 'Tắt'}`} onClick={() => toggleBoolean(item, column.key)} className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${item[column.key] ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-600'}`}><span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${item[column.key] ? 'translate-x-6' : 'translate-x-1'}`} /></button>,
   } : column);
@@ -168,7 +189,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
           <div className="border-b border-[var(--border-color)] pb-5"><h2 className="text-xl font-semibold">Thông tin {title.toLowerCase()}</h2><p className="mt-1 text-sm text-[var(--muted-fg)]">Các trường có dấu * là bắt buộc.</p></div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
             {editableFields.map(field => (
-              <div key={field.name} className={field.type === 'textarea' || field.type === 'richtext' || field.type === 'image' ? 'lg:col-span-2' : ''}><FormField label={field.label} required={field.required}>
+              <div key={field.name} className={field.type === 'textarea' || field.type === 'richtext' || field.type === 'image' || field.type === 'images' ? 'lg:col-span-2' : ''}><FormField label={field.label} required={field.required}>
                 {field.type === 'richtext' ? (
                   <RichTextEditor name={field.name} defaultValue={editItem ? String(editItem[field.name] ?? '') : String(field.defaultValue ?? '')} placeholder={field.placeholder} required={field.required} />
                 ) : field.type === 'textarea' ? (
@@ -180,6 +201,10 @@ export default function CrudPage<T extends Record<string, unknown>>({
                   </Select>
                 ) : field.type === 'image' ? (
                   <ImageUpload name={field.name} existing={String(editItem?.[field.name] || '')} hint={field.hint} />
+                ) : field.type === 'images' ? (
+                  <ImageUpload name={field.name} existing={Array.isArray(editItem?.[field.name]) ? editItem[field.name] as string[] : []} multiple maxFiles={10} hint={field.hint} />
+                ) : field.type === 'price' ? (
+                  <PriceInput name={field.name} defaultValue={editItem ? Number(editItem[field.name] ?? 0) : undefined} required={field.required} placeholder={field.placeholder} />
                 ) : field.type === 'color' ? (
                   <ColorCodeInput name={field.name} defaultValue={String(editItem?.[field.name] || field.defaultValue || '')} colorName={String(editItem?.title || '')} />
                 ) : field.type === 'date' ? (
