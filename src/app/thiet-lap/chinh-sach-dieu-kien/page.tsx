@@ -1,3 +1,3 @@
 'use client';
-import LegacyCollectionPage from '@/components/LegacyCollectionPage';
-export default function Page() { return <LegacyCollectionPage />; }
+import WebsiteContentPage from '@/components/WebsiteContentPage';
+export default function Page() { return <WebsiteContentPage policy />; }

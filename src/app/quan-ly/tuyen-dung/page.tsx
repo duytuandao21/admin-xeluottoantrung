@@ -1,22 +1,18 @@
 'use client';
 import CrudPage from '@/components/CrudPage';
-import { StatusBadge } from '@/components/ui';
+import { richTextPreview } from '@/lib/rich-text';
 export default function TuyenDungPage() {
-  return <CrudPage title="Quản lý tuyển dụng" columns={[
+  return <CrudPage title="Quản lý tuyển dụng" subtitle="Soạn bài tuyển dụng và chọn bài được hiển thị trên website" statusToggle columns={[
     { key: 'id', label: 'STT', width: '60px' },
-    { key: 'title', label: 'Vị trí', sortable: true, render: (item) => <span className="font-medium">{String(item.title)}</span> },
-    { key: 'salary', label: 'Mức lương', render: (item) => <span className="font-semibold text-emerald-600">{String(item.salary || 'Thỏa thuận')}</span> },
-    { key: 'location', label: 'Địa điểm' },
-    { key: 'deadline', label: 'Hạn nộp', sortable: true },
-    { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },
+    { key: 'title', label: 'Tiêu đề', sortable: true, render: (item) => <span className="font-medium">{String(item.title)}</span> },
+    { key: 'description', label: 'Nội dung', render: item => <span className="block max-w-xs truncate text-sm text-[var(--muted-fg)]">{richTextPreview(String(item.description || ''))}</span> },
+    { key: 'createdAt', label: 'Ngày tạo', sortable: true },
+    { key: 'status', label: 'Hiển thị' },
   ]} formFields={[
-    { name: 'title', label: 'Vị trí tuyển dụng', required: true, placeholder: 'VD: Nhân viên kinh doanh' },
-    { name: 'image', label: 'Hình tuyển dụng', type: 'image' },
-    { name: 'description', label: 'Mô tả công việc', type: 'richtext', required: true },
-    { name: 'requirements', label: 'Yêu cầu', type: 'richtext', required: true },
-    { name: 'salary', label: 'Mức lương', placeholder: 'VD: 10-20 triệu' },
-    { name: 'location', label: 'Địa điểm', placeholder: 'VD: TP.HCM' },
-    { name: 'deadline', label: 'Hạn nộp', type: 'date' },
-    { name: 'status', label: 'Trạng thái', type: 'select', options: [{ value: 'active', label: 'Đang tuyển' }, { value: 'inactive', label: 'Đã đóng' }] },
-  ]} searchPlaceholder="Tìm kiếm vị trí..." searchFields={['title', 'location']} nameField="title" />;
+    { name: 'title', label: 'Tiêu đề', required: true, placeholder: 'Nhập tiêu đề bài tuyển dụng...' },
+    { name: 'image', label: 'Ảnh đại diện', type: 'image' },
+    { name: 'excerpt', label: 'Mô tả ngắn', type: 'textarea', placeholder: 'Giới thiệu ngắn về bài tuyển dụng...' },
+    { name: 'description', label: 'Nội dung bài viết', type: 'richtext', required: true, placeholder: 'Nhập nội dung tuyển dụng...' },
+    { name: 'status', label: 'Hiển thị trên website', type: 'select', defaultValue: 'active', options: [{ value: 'active', label: 'Hiển thị' }, { value: 'inactive', label: 'Ẩn' }] },
+  ]} searchPlaceholder="Tìm bài tuyển dụng..." searchFields={['title']} nameField="title" />;
 }

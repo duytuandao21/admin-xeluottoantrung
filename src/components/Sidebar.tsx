@@ -9,7 +9,7 @@ import {
   Building2, Shapes, Calendar, Settings2, Briefcase, DollarSign, Wrench,
   Info, Heart, HelpCircle, Newspaper, Users, Image,
   Palette, Phone, Share2, Smartphone, CreditCard,
-  FileText, ArrowLeftRight, Compass, ListChecks, ShoppingCart, HandCoins,
+  FileText, ArrowLeftRight, ListChecks, ShoppingCart, HandCoins,
   ImagePlus, Star, BookOpen, BarChart3, Search, ChevronDown,
   Gauge, ClipboardCheck, ScanText, PanelBottom, BadgeCheck, UserCog, SlidersHorizontal, Factory, CarFront,
   type LucideIcon
@@ -57,7 +57,6 @@ export const menuItems: MenuItem[] = [
     ]
   },
   { label: 'Dịch vụ', href: '/quan-ly/dich-vu', icon: Wrench },
-  { label: 'Tin tức', href: '/quan-ly/tin-tuc', icon: Newspaper },
   {
     label: 'Chi nhánh', icon: Building2, children: [
       { label: 'Danh mục chi nhánh', href: '/quan-ly/danh-muc-chi-nhanh', icon: FolderTree },
@@ -66,18 +65,18 @@ export const menuItems: MenuItem[] = [
   },
   {
     label: 'Bài viết & nội dung', icon: FileText, children: [
+      { label: 'Tin tức', href: '/quan-ly/tin-tuc', icon: Newspaper },
+      { label: 'Kinh nghiệm sử dụng xe ô tô', href: '/quan-ly/kinh-nghiem-su-dung-xe', icon: BookOpen },
       { label: 'Giới thiệu', href: '/quan-ly/gioi-thieu', icon: Info },
       { label: 'Cảm nhận KH', href: '/quan-ly/cam-nhan-khach-hang', icon: Heart },
       { label: 'Câu hỏi thường gặp', href: '/quan-ly/cau-hoi-thuong-gap', icon: HelpCircle },
       { label: 'Tuyển dụng', href: '/quan-ly/tuyen-dung', icon: Briefcase },
-      { label: 'Nội dung thống kê', href: '/quan-ly/thong-ke-noi-dung', icon: BarChart3 },
       { label: 'Tại sao chọn', href: '/thiet-lap/tai-sao-chon', icon: Star },
     ]
   },
   {
     label: 'Quy trình & hướng dẫn', icon: ListChecks, children: [
       { label: 'Quy trình bán xe', href: '/thiet-lap/quy-trinh-ban-xe', icon: ListChecks },
-      { label: 'Khám phá xe', href: '/thiet-lap/kham-pha-xe', icon: Compass },
       { label: 'Các bước mua xe', href: '/thiet-lap/cac-buoc-mua-xe', icon: ShoppingCart },
       { label: 'Các bước bán xe', href: '/thiet-lap/cac-buoc-ban-xe', icon: HandCoins },
       { label: 'Các bước lên đời', href: '/thiet-lap/cac-buoc-len-doi', icon: ArrowLeftRight },
@@ -94,7 +93,6 @@ export const menuItems: MenuItem[] = [
   },
   {
     label: 'Trang tĩnh', icon: FileText, children: [
-      { label: 'Liên hệ', href: '/thiet-lap/lien-he', icon: PhoneCall },
       { label: 'Footer', href: '/thiet-lap/footer', icon: PanelBottom },
       { label: 'Text trả góp', href: '/thiet-lap/text-tra-gop', icon: CreditCard },
       { label: 'Text bán xe', href: '/thiet-lap/text-ban-xe', icon: FileText },
@@ -107,9 +105,9 @@ export const menuItems: MenuItem[] = [
       { label: 'Favicon', href: '/thiet-lap/favicon', icon: ImagePlus },
       { label: 'Slideshow', href: '/thiet-lap/slideshow', icon: Image },
       { label: 'Banner dòng xe', href: '/thiet-lap/banner-dong-xe', icon: Image },
+      { label: 'Banner bán xe', href: '/thiet-lap/banner-ban-xe', icon: Image },
       { label: 'Banner lên đời', href: '/thiet-lap/banner-len-doi', icon: Image },
       { label: 'Ảnh vì sao chọn', href: '/thiet-lap/anh-vi-sao-chon', icon: ImagePlus },
-      { label: 'Ảnh chi nhánh', href: '/thiet-lap/anh-chi-nhanh', icon: ImagePlus },
       { label: 'Mạng xã hội', href: '/thiet-lap/mang-xa-hoi', icon: Share2 },
       { label: 'Ứng dụng', href: '/thiet-lap/ung-dung', icon: Smartphone },
     ]
@@ -122,10 +120,18 @@ export const menuItems: MenuItem[] = [
   },
   {
     label: 'SEO', icon: Search, children: [
+      { label: 'Tất cả trang', href: '/seo', icon: ListChecks },
+      { label: 'Trang chủ', href: '/seo/trang-chu', icon: LayoutDashboard },
+      { label: 'Phụ kiện ô tô', href: '/seo/phu-kien-o-to', icon: ShoppingCart },
+      { label: 'Bán xe', href: '/seo/ban-xe', icon: HandCoins },
+      { label: 'Lên đời', href: '/seo/len-doi', icon: ArrowLeftRight },
+      { label: 'Dịch vụ', href: '/seo/dich-vu', icon: Wrench },
+      { label: 'Giới thiệu', href: '/seo/gioi-thieu', icon: Info },
+      { label: 'Tuyển dụng', href: '/seo/tuyen-dung', icon: Briefcase },
       { label: 'FAQ', href: '/seo/cau-hoi-thuong-gap', icon: HelpCircle },
       { label: 'Đánh giá KH', href: '/seo/danh-gia-khach-hang', icon: Heart },
       { label: 'Mua xe', href: '/seo/mua-xe', icon: ShoppingCart },
-      { label: 'Tin tức', href: '/seo/tin-tuc', icon: Newspaper },
+      { label: 'Bài viết', href: '/seo/tin-tuc', icon: Newspaper },
     ]
   },
   {

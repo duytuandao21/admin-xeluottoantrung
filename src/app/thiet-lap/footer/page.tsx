@@ -8,14 +8,11 @@ const services = [
 ];
 const about = [
   ['Về chúng tôi', '/ve-chung-toi'], ['Hệ thống showroom', '#tt-showrooms'],
-  ['Liên hệ', '#tt-footer-contact'], ['Chính sách quyền riêng tư', '/chinh-sach-quyen-rieng-tu'],
+  ['Liên hệ', '#tt-footer-contact'],
 ];
 
 const fields: SettingsField[] = [
-  { section: 'Giới thiệu và liên kết xã hội', name: 'footerAbout', label: 'Mô tả Toàn Trung', type: 'textarea', defaultValue: 'Hệ thống mua bán ô tô đã qua sử dụng, hướng tới trải nghiệm minh bạch, thuận tiện và chuyên nghiệp cho khách hàng.' },
-  { name: 'facebookUrl', label: 'Facebook', defaultValue: 'https://www.facebook.com/ototoantrung' },
-  { name: 'tiktokUrl', label: 'TikTok', defaultValue: 'https://www.tiktok.com/@toantrunggialai' },
-  { name: 'youtubeUrl', label: 'YouTube', defaultValue: 'https://www.youtube.com/@ototoantrung' },
+  { section: 'Giới thiệu', name: 'footerAbout', label: 'Mô tả Toàn Trung', type: 'textarea', defaultValue: 'Hệ thống mua bán ô tô đã qua sử dụng, hướng tới trải nghiệm minh bạch, thuận tiện và chuyên nghiệp cho khách hàng.' },
   { section: 'Danh mục Dịch vụ', name: 'serviceTitle', label: 'Tiêu đề danh mục', defaultValue: 'Dịch vụ' },
   ...services.flatMap(([label, href], index): SettingsField[] => [
     { name: `serviceLink${index + 1}Label`, label: `Mục ${index + 1} — tên`, defaultValue: label },
@@ -50,11 +47,7 @@ const fields: SettingsField[] = [
   { name: 'businessPhone', label: 'Điện thoại doanh nghiệp', defaultValue: '0777 393 912' },
   { name: 'businessAddressLabel', label: 'Nhãn địa chỉ', defaultValue: 'Địa chỉ trụ sở' },
   { name: 'businessAddress', label: 'Địa chỉ trụ sở', defaultValue: '338–340–342–344 Hùng Vương, Phường Pleiku, Tỉnh Gia Lai' },
-  { section: 'Dòng cuối Footer', name: 'footerCopyright', label: 'Bản quyền', defaultValue: '© Auto Toàn Trung. All rights reserved.' },
-  { name: 'legalTermsLabel', label: 'Tên liên kết điều khoản', defaultValue: 'Điều khoản sử dụng' },
-  { name: 'legalTermsHref', label: 'Liên kết điều khoản', defaultValue: '/dieu-khoan-su-dung' },
-  { name: 'legalPrivacyLabel', label: 'Tên liên kết riêng tư', defaultValue: 'Chính sách quyền riêng tư' },
-  { name: 'legalPrivacyHref', label: 'Liên kết riêng tư', defaultValue: '/chinh-sach-quyen-rieng-tu' },
+  { section: 'Dòng cuối Footer', name: 'footerCopyright', label: 'Bản quyền', defaultValue: '© Auto Toàn Trung. All rights reserved.', hint: 'Các liên kết chính sách được quản lý tại Chính sách và điều kiện.' },
 ];
 
 export default function Page() {

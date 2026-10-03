@@ -22,20 +22,24 @@ export interface SettingsField {
   hint?: string;
 }
 
-export default function SettingsPage({ title, subtitle, fields, children }: { title: string; subtitle?: string; fields: SettingsField[]; children?: ReactNode }) {
+export default function SettingsPage({ title, subtitle, fields, children, settingsGroup }: { title: string; subtitle?: string; fields: SettingsField[]; children?: ReactNode; settingsGroup?: string }) {
   const pathname = usePathname();
   const defaults = Object.fromEntries(fields.map(field => [field.name, field.defaultValue ?? '']));
   const [values, setValues] = useState<Record<string, string>>(defaults);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
   const isSeo = pathname.startsWith('/seo/');
-  const group = pathname.slice(1).replaceAll('/', '-');
-  const seoRoute: Record<string, string> = { '/seo/tin-tuc': '/tin-tuc', '/seo/mua-xe': '/mua-xe', '/seo/danh-gia-khach-hang': '/danh-gia-khach-hang', '/seo/cau-hoi-thuong-gap': '/cau-hoi-thuong-gap' };
+  const group = settingsGroup || pathname.slice(1).replaceAll('/', '-');
+  const seoRoute: Record<string, string> = { '/seo/tin-tuc': '/bai-viet', '/seo/mua-xe': '/san-pham', '/seo/danh-gia-khach-hang': '/cam-nhan', '/seo/cau-hoi-thuong-gap': '/cau-hoi' };
   const load = useCallback(async () => {
     setLoaded(false); setError('');
     try {
       if (isSeo) {
-        const item = await api<Record<string, unknown>>(`/admin/seo/by-route${query({ route: seoRoute[pathname] || pathname })}`).catch(failure => { if (failure instanceof ApiError && failure.status === 404) return null; throw failure; });
+        let item = await api<Record<string, unknown>>(`/admin/seo/by-route${query({ route: seoRoute[pathname] || pathname })}`).catch(failure => { if (failure instanceof ApiError && failure.status === 404) return null; throw failure; });
+        if (!item && pathname === '/seo/tin-tuc') {
+          item = await api<Record<string, unknown>>(`/admin/seo/by-route${query({ route: '/tin-tuc' })}`).catch(failure => { if (failure instanceof ApiError && failure.status === 404) return null; throw failure; });
+          if (item) item = { ...item, canonicalUrl: String(item.canonicalUrl || '').replace(/\/tin-tuc(?=[?#]|$)/, '/bai-viet') };
+        }
         setValues({ ...defaults, ...(item ? { title: String(item.metaTitle || ''), description: String(item.metaDescription || ''), keywords: String(item.keywords || ''), ogImage: String(item.ogImageUrl || ''), canonical: String(item.canonicalUrl || '') } : {}) });
       } else {
         const rows = await api<{ key: string; value: string }[]>(`/admin/site-settings/${group}`);

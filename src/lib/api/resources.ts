@@ -28,6 +28,7 @@ const resources: Record<string, Resource> = {
   '/phu-kien-o-to/danh-muc': collection('accessory-categories'),
   '/phu-kien-o-to/thuong-hieu': collection('accessory-brands'),
   '/quan-ly/tin-tuc': collection('articles'),
+  '/quan-ly/kinh-nghiem-su-dung-xe': collection('driving-experiences'),
   '/quan-ly/cau-hoi-thuong-gap': collection('faqs'),
   '/quan-ly/cam-nhan-khach-hang': collection('testimonials'),
   '/quan-ly/dich-vu': collection('services'),
@@ -35,10 +36,11 @@ const resources: Record<string, Resource> = {
   '/thiet-lap/slideshow': collection('slides'),
   '/tai-khoan/khach-hang': { kind: 'customer', path: '/admin/customers' },
 };
-const entryRoutes = ['/quan-ly/gioi-thieu', '/quan-ly/thong-ke-noi-dung', '/thiet-lap/banner-dong-xe', '/thiet-lap/cac-buoc-mua-xe', '/thiet-lap/cac-buoc-ban-xe', '/thiet-lap/cac-buoc-len-doi', '/thiet-lap/chinh-sach-dieu-kien', '/thiet-lap/kham-pha-xe', '/thiet-lap/quy-trinh-ban-xe', '/thiet-lap/tai-sao-chon', '/thiet-lap/goi-y-nam-san-xuat', '/thiet-lap/nut-goi', '/thiet-lap/mang-xa-hoi', '/thiet-lap/ung-dung'];
+const entryRoutes = ['/quan-ly/gioi-thieu', '/thiet-lap/banner-dong-xe', '/thiet-lap/cac-buoc-mua-xe', '/thiet-lap/cac-buoc-ban-xe', '/thiet-lap/cac-buoc-len-doi', '/thiet-lap/chinh-sach-dieu-kien', '/thiet-lap/quy-trinh-ban-xe', '/thiet-lap/tai-sao-chon', '/thiet-lap/goi-y-nam-san-xuat', '/thiet-lap/nut-goi', '/thiet-lap/mang-xa-hoi', '/thiet-lap/ung-dung'];
 for (const route of entryRoutes) resources[route] = entry(route.slice(1).replaceAll('/', '-'));
 
 export function resourceFor(route: string): Resource { const resource = resources[route]; if (!resource) throw new Error(`Chưa có API cho màn ${route}`); return resource; }
+function isArticleCollection(resource: Resource) { return resource.path.endsWith('/articles') || resource.path.endsWith('/driving-experiences'); }
 export function mapRow(resource: Resource, item: Row): Row {
   if (resource.kind === 'entry') return { ...item, image: item.imageUrl ?? '', description: item.body ?? '', order: item.sortOrder ?? 0 };
   return { ...item, image: item.imageUrl ?? item.avatarUrl ?? '', avatar: item.avatarUrl ?? '', order: item.sortOrder ?? 0,
@@ -62,7 +64,7 @@ export async function listResource(route: string, page = 1, search = ''): Promis
     return { data: filtered.slice((page - 1) * 10, page * 10).map(row => mapRow(resource, row)), meta: { page, limit: 10, total: filtered.length, totalPages: Math.ceil(filtered.length / 10) } };
   }
   const result = await api<PageResult<Row>>(`${resource.path}${query({ page, limit: 10, search, group: resource.group })}`);
-  if (resource.path.endsWith('/articles')) {
+  if (isArticleCollection(resource)) {
     const categories = await api<PageResult<{ id: string; name: string }>>('/admin/collections/article-categories?page=1&limit=100');
     return { ...result, data: result.data.map(row => ({ ...mapRow(resource, row), category: categories.data.find(item => item.id === row.categoryId)?.name || '—' })) };
   }
@@ -75,7 +77,8 @@ function payload(resource: Resource, form: Row, editing: boolean): Row {
   if (data.avatar !== undefined) { data.avatarUrl = data.avatar || null; delete data.avatar; }
   if (data.order !== undefined) { data.sortOrder = Number(data.order); delete data.order; }
   if (resource.kind === 'entry') {
-    data.body = data.description || null; delete data.description;
+    if (!editing || data.description !== undefined) data.body = data.description || null;
+    delete data.description;
     if (!editing) { data.group = resource.group; data.key = slugify(String(data.slug || data.title || '')).slice(0, 100).replace(/-$/, '') || crypto.randomUUID(); }
     delete data.slug; delete data.featured;
   }
@@ -105,12 +108,12 @@ function payload(resource: Resource, form: Row, editing: boolean): Row {
   }
   if (resource.kind === 'customer') delete data.lastLogin;
   if (editing) delete data.slug;
-  return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined && value !== ''));
+  return Object.fromEntries(Object.entries(data).filter(([key, value]) => value !== undefined && (value !== '' || ((resource.path.endsWith('/faqs') || isArticleCollection(resource)) && key === 'excerpt'))));
 }
 export async function saveResource(route: string, form: Row, old?: Row | null) {
   const resource = resourceFor(route);
   const data = payload(resource, form, !!old);
-  if (resource.path.endsWith('/articles') && form.category) {
+  if (isArticleCollection(resource) && form.category) {
     const categoryName = String(form.category);
     const categories = await api<PageResult<{ id: string; name: string }>>('/admin/collections/article-categories?page=1&limit=100');
     let category = categories.data.find(item => item.name === categoryName);

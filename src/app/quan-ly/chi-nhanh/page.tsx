@@ -39,7 +39,7 @@ export default function ChiNhanhPage() {
         { name: 'regionId', label: 'Danh mục chi nhánh', type: 'select', required: true,
           options: regions.map(region => ({ value: region.id, label: `${region.name}${region.status === 'active' ? '' : ' (Đang ẩn)'}` })) },
         { name: 'name', label: 'Tên chi nhánh', required: true, placeholder: 'VD: Chi nhánh Quận 7' },
-        { name: 'image', label: 'Hình chi nhánh', type: 'image' },
+        { name: 'image', label: 'Ảnh đại diện chi nhánh', type: 'image', hint: 'Ảnh ngang của showroom, hiển thị trên thẻ chi nhánh tại trang chi tiết xe.' },
         { name: 'phone', label: 'Số điện thoại', required: true, placeholder: '028 1234 5678' },
         { name: 'address', label: 'Địa chỉ', required: true, placeholder: 'Số nhà, đường, quận, TP' },
         { name: 'mapUrl', label: 'Google Maps URL', placeholder: 'https://maps.google.com/...' },

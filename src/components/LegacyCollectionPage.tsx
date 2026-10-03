@@ -10,13 +10,11 @@ type Definition = { title: string; kind: Kind; featured?: boolean; description?:
 
 const definitions: Record<string, Definition> = {
   '/quan-ly/gioi-thieu': { title: 'Giới thiệu', kind: 'image', description: true },
-  '/quan-ly/thong-ke-noi-dung': { title: 'Nội dung thống kê', kind: 'text' },
   '/thiet-lap/banner-dong-xe': { title: 'Banner dòng xe', kind: 'link' },
   '/thiet-lap/cac-buoc-mua-xe': { title: 'Các bước mua xe', kind: 'image', description: true },
   '/thiet-lap/cac-buoc-ban-xe': { title: 'Các bước bán xe', kind: 'image', description: true },
   '/thiet-lap/cac-buoc-len-doi': { title: 'Các bước lên đời', kind: 'image', description: true },
   '/thiet-lap/chinh-sach-dieu-kien': { title: 'Chính sách và điều kiện', kind: 'image', description: true },
-  '/thiet-lap/kham-pha-xe': { title: 'Khám phá xe', kind: 'image', description: true },
   '/thiet-lap/quy-trinh-ban-xe': { title: 'Quy trình bán xe', kind: 'image', description: true },
   '/thiet-lap/tai-sao-chon': { title: 'Tại sao chọn chúng tôi', kind: 'image', description: true },
   '/thiet-lap/goi-y-nam-san-xuat': { title: 'Gợi ý năm sản xuất', kind: 'text' },
