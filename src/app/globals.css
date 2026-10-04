@@ -202,3 +202,5 @@ input:focus, select:focus, textarea:focus {
 .btn-hover:hover::after {
   opacity: 1;
 }
+/* Native dialog preserves keyboard focus during ruleset publication confirmation. */
+.auspicious-confirm::backdrop { background:rgb(0 0 0 / .45); backdrop-filter:blur(3px); }

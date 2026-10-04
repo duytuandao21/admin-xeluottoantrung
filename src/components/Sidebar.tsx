@@ -27,6 +27,9 @@ interface MenuItem {
 export const menuItems: MenuItem[] = [
   { label: 'Tổng quan', href: '/', icon: LayoutDashboard },
   { label: 'Thống kê', href: '/thong-ke', icon: BarChart3 },
+  { label: 'Tiện ích', icon: Wrench, children: [
+    { label: 'Xem ngày mua xe', href: '/tien-ich/xem-ngay-mua-xe', icon: Calendar },
+  ] },
   {
     label: 'Sản phẩm', icon: Car, children: [
       { label: 'Danh sách xe', href: '/san-pham', icon: Car },
