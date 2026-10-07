@@ -29,6 +29,7 @@ export const menuItems: MenuItem[] = [
   { label: 'Thống kê', href: '/thong-ke', icon: BarChart3 },
   { label: 'Tiện ích', icon: Wrench, children: [
     { label: 'Xem ngày mua xe', href: '/tien-ich/xem-ngay-mua-xe', icon: Calendar },
+    { label: 'Định giá xe cũ', href: '/tien-ich/dinh-gia-xe', icon: HandCoins },
   ] },
   {
     label: 'Sản phẩm', icon: Car, children: [
