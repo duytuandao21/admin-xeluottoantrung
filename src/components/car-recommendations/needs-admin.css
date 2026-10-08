@@ -1,0 +1,23 @@
+.tt-needs-admin { min-width:0; }
+.tt-needs-admin-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.tt-needs-admin-tabs button { padding:12px 14px; min-height:54px; border:1px solid var(--border-color); border-radius:12px; background:var(--muted); font-size:15px; font-weight:600; line-height:1.45; }
+.tt-needs-admin-tabs button[aria-current=page] { color:white; background:#e00000; border-color:#e00000; box-shadow:0 5px 14px #e000001f; }
+.tt-needs-admin-tabs button:hover { border-color:#ec9797; }
+.tt-needs-admin :is(button,input,select,textarea,a):focus-visible { outline:3px solid #e99c9c; outline-offset:2px; }
+.tt-needs-admin input[type=checkbox] { accent-color:#e00000; width:18px; height:18px; }
+.tt-needs-admin :is(input,select,textarea) { min-width:0; }
+.tt-needs-question { border:1px solid var(--border-color); background:var(--card-bg); border-radius:14px; padding:18px; }
+.tt-needs-factors { display:grid; grid-template-columns:minmax(180px,1fr) minmax(140px,.65fr) minmax(220px,1.4fr); gap:12px; align-items:start; padding:14px 0; border-bottom:1px solid var(--border-color); }
+.tt-needs-bars { margin-top:16px; display:grid; gap:12px; }
+.tt-needs-bars progress { display:block; width:100%; height:8px; accent-color:#e00000; }
+.tt-needs-bars progress::-webkit-progress-bar { background:var(--muted); border-radius:6px; }
+.tt-needs-bars progress::-webkit-progress-value { background:#e00000; border-radius:6px; }
+.tt-needs-bars progress::-moz-progress-bar { background:#e00000; border-radius:6px; }
+.tt-needs-trend { display:flex; height:170px; gap:2px; align-items:flex-end; overflow-x:auto; padding:0 2px 8px; }
+.tt-needs-trend>div { display:flex; flex:1 0 4px; height:100%; align-items:flex-end; }
+.tt-needs-trend span { background:#e00000; width:100%; min-height:2px; border-radius:3px 3px 0 0; }
+.tt-needs-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; align-items:end; }
+.tt-needs-answer { display:grid; grid-template-columns:minmax(140px,.8fr) minmax(0,1.2fr); gap:12px; border-bottom:1px solid var(--border-color); padding:12px 0; }
+@media(max-width:1000px) { .tt-needs-admin-tabs { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px) { .tt-needs-factors,.tt-needs-answer { grid-template-columns:minmax(0,1fr); } .tt-needs-admin-tabs button { padding:10px; font-size:14px; } .tt-needs-filters { grid-template-columns:minmax(0,1fr); } }
+@media(prefers-reduced-motion:reduce) { .tt-needs-admin * { transition:none !important; animation:none !important; } }

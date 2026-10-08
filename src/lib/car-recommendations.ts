@@ -1,0 +1,21 @@
+export const needsBase = '/admin/car-recommendations';
+export type Question = { key: string; title: string; description: string; type: 'single' | 'multi' | 'budget' | 'technical'; required: boolean; enabled: boolean; maxSelections: number; helpText: string; options: { key: string; label: string }[] };
+export const groupLabels = { budget: 'Ngân sách / giá', purposes: 'Mục đích sử dụng', priorities: 'Các ưu tiên', environment: 'Môi trường', seats: 'Số ghế', technical: 'Thông số kỹ thuật' };
+export type Config = { questions: Question[]; weights: Record<keyof typeof groupLabels, number>; minBudget: number; maxBudget: number; maxResults: number; budgetPresets: { label: string; min: number; max: number }[] };
+export type Assessment = { score: number; source: string };
+export type Settings = { id: number; enabled: boolean; config: Config; retentionDays: number; updatedAt: string; defaults: Config; assessmentCatalog: { key: string; group: string; label: string; guidance: string }[]; catalogs: { brands: { id: string; name: string }[]; models: { id: string; name: string; brandId: string }[] } };
+export type Labels = Record<string, Record<string, string>>;
+export type Criteria = { budgetMin: number; budgetMax: number; preferredSeats: number; minimumSeats: number | null; purposes: string[]; priorities: string[]; environment: string; technical: Record<string, string>; requiredTechnical: string[]; style: string | null };
+export type SessionRow = Record<string, unknown> & { id: string; createdAt: string; criteria: Criteria; answers: Record<string, unknown>; resultCount: number; topScore: number | null; eventCount: number; interactions: string[]; labels: Labels };
+export type Car = { id: string; name: string; slug: string; price: number; year: number; seatCount: number | null; mileage: number | null };
+export type Match = { car: Car; score: number; coverage: number; reasons: string[]; caveats: string[]; components: { key: keyof typeof groupLabels; score: number; coverage: number; weight: number }[] };
+export type SessionDetail = { id: string; createdAt: string; answers: Record<string, unknown>; criteria: Criteria; completionMs: number; snapshot: { questions: Question[]; technicalOptions?: Record<string, { key: string; label: string }[]>; config: Config; algorithm: string; results: Match[] }; currentCars: { id: string; name: string; status: string; price: number; isAvailable: boolean; deletedAt: string | null }[]; events: { type: string; carId: string | null; createdAt: string }[] };
+export type ProfileRow = Record<string, unknown> & { id: string; name: string; slug: string; year: number; price: number; status: string; publishedAt: string | null; brand: string | null; model: string | null; knownCount: number; updatedAt: string | null };
+export type ProfileDetail = { car: Car & { status: string }; assessments: Record<string, Assessment>; updatedAt: string | null };
+export type TopCar = Record<string, unknown> & { car_id: string; name: string; recommendations: number; clicks: number; status: string | null; removed: boolean; clickRate: number };
+export type Overview = { range: { from: string; to: string; timezone: string }; total: number; empty: number; viewed: number; carClicked: number; contactClicked: number; eventCount: number; rates: { viewed: number; carClicked: number; contactClicked: number; empty: number }; labels: Labels; distributions: { field: string; key: string; count: number; unmet: number }[]; budgets: { key: string; count: number; unmet: number }[]; topCars: TopCar[]; topClicked: TopCar[]; trend: { day: string; count: number; unmet: number }[] };
+export const eventLabels: Record<string, string> = { result_viewed: 'Xem kết quả', car_clicked: 'Xem xe', contact_clicked: 'Liên hệ', quiz_restarted: 'Làm lại khảo sát' };
+export function labelsFor(settings: Settings): Labels { return Object.fromEntries(settings.config.questions.map(q => [q.key, Object.fromEntries(q.options.map(o => [o.key, o.label]))])); }
+export const money = (n: number) => `${n.toLocaleString('vi-VN')} đ`;
+export const shortMoney = (n: number) => `${(n / 1000000).toLocaleString('vi-VN')} triệu`;
+export function defaultDateRange() { const to = new Date(Date.now() + 7 * 3600000); return { to: to.toISOString().slice(0, 10), from: new Date(to.getTime() - 29 * 86400000).toISOString().slice(0, 10) }; }

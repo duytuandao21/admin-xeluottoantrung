@@ -22,6 +22,7 @@ interface MenuItem {
   icon: LucideIcon;
   badge?: number;
   children?: MenuItem[];
+  permission?: string;
 }
 
 export const menuItems: MenuItem[] = [
@@ -30,6 +31,7 @@ export const menuItems: MenuItem[] = [
   { label: 'Tiện ích', icon: Wrench, children: [
     { label: 'Xem ngày mua xe', href: '/tien-ich/xem-ngay-mua-xe', icon: Calendar },
     { label: 'Định giá xe cũ', href: '/tien-ich/dinh-gia-xe', icon: HandCoins },
+    { label: 'Mua xe theo nhu cầu', href: '/tien-ich/mua-xe-theo-nhu-cau', icon: ClipboardCheck, permission: 'car_recommendation.sessions.read' },
   ] },
   {
     label: 'Sản phẩm', icon: Car, children: [
@@ -240,7 +242,7 @@ export default function Sidebar() {
       {/* Menu */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
         {menuItems.map((item, i) => (
-          <SidebarMenuItem key={i} item={item} />
+          <SidebarMenuItem key={i} item={item.children ? { ...item, children: item.children.filter(child => !child.permission || identity?.permissions.includes(child.permission)) } : item} />
         ))}
       </nav>
 
