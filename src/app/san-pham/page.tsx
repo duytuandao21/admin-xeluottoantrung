@@ -7,7 +7,7 @@ import { slugify } from '@/lib/slug';
 import { api, json, query, type PageResult } from '@/lib/api/client';
 import { carDetail, carToProduct, deleteCar, listCars, saveCar } from '@/lib/api/cars';
 import { uploadCarImage } from '@/lib/api/media';
-import { Plus, Download, Car, Star, CreditCard, Sparkles, MapPin } from 'lucide-react';
+import { Plus, Download, Car, Star, CreditCard, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Product, Category, CarAttribute, GearBox, Branch } from '@/lib/types';
 import ImageUpload from '@/components/ImageUpload';
@@ -19,6 +19,8 @@ import { sanitizeRichText } from '@/lib/rich-text';
 import { DEFAULT_CAR_DESCRIPTION } from '@/lib/default-car-description';
 import { resolveCarColorCode, type ManagedCarColor } from '@/lib/car-colors';
 import Link from 'next/link';
+import CarNewArrivalOption from '@/components/CarNewArrivalOption';
+import { newArrivalUpdate } from '@/lib/car-new-arrival';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -141,6 +143,7 @@ export default function ProductsPage() {
         transmission: gearboxes.find(row => String(row.id) === String(detail.transmissionId))?.name || '',
         seatCount: detail.seatCount == null ? null : Number(detail.seatCount),
         condition: String(detail.condition || ''), licensePlate: String(detail.licensePlate || ''), description: String(detail.description || ''), fuel: String(detail.fuel || ''),
+        createdAt: String(detail.createdAt || product.createdAt), newArrival: Boolean(detail.newArrival ?? product.newArrival),
         updatedAt: String(detail.updatedAt || ''), originalPrice: Number(detail.originalPrice || 0) };
       setBrand(hydrated.brand); setModel(hydrated.model); setVersion(hydrated.version || ''); setSelectedColor(hydrated.color);
       setSlugPreview(hydrated.slug); setEditItem(hydrated);
@@ -155,7 +158,8 @@ export default function ProductsPage() {
         color: managedColors.find(color => String(color.id) === detail.colorId)?.title || product.color,
         condition: String(detail.condition || ''), licensePlate: String(detail.licensePlate || ''),
         seatCount: detail.seatCount == null ? null : Number(detail.seatCount),
-        description: String(detail.description || ''), updatedAt: String(detail.updatedAt || product.updatedAt) });
+        description: String(detail.description || ''), createdAt: String(detail.createdAt || product.createdAt),
+        newArrival: Boolean(detail.newArrival ?? product.newArrival), updatedAt: String(detail.updatedAt || product.updatedAt) });
     } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể tải chi tiết xe.'); }
   };
   const handleDelete = async () => {
@@ -226,7 +230,8 @@ export default function ProductsPage() {
       branchId: chosenBranch ? String(chosenBranch.id) : null,
       licensePlate: String(data.licensePlate || ''), condition: String(data.condition || ''),
       status: String(data.status) as Product['status'], description: sanitizeRichText(String(data.description || '')),
-      featured: form.has('featured'), installment: form.has('installment'), newArrival: form.has('newArrival'),
+      featured: form.has('featured'), installment: form.has('installment'),
+      ...(editItem ? newArrivalUpdate(editItem.createdAt, Boolean(editItem.newArrival), form.has('newArrival')) : { newArrival: true }),
     };
     if (!slugify(fields.name)) {
       toast.error('Tên xe cần có chữ hay số để tạo slug.');
@@ -407,10 +412,7 @@ export default function ProductsPage() {
                 <input name="installment" type="checkbox" defaultChecked={formData.installment} className="mt-1 h-5 w-5 shrink-0 accent-red-600" />
                 <span className="min-w-0"><span className="flex items-center gap-2 font-semibold"><CreditCard className="h-5 w-5 shrink-0 text-red-500" /> Hỗ trợ trả góp</span><span className="mt-1 block text-sm text-[var(--muted-fg)]">Hiển thị tùy chọn trả góp</span></span>
               </label>
-              <label className="product-option flex cursor-pointer items-start gap-3 rounded-xl border border-[var(--border-color)] bg-[var(--card-bg)] p-4 transition-colors hover:border-red-300">
-                <input name="newArrival" type="checkbox" defaultChecked={formData.newArrival} className="mt-1 h-5 w-5 shrink-0 accent-red-600" />
-                <span className="min-w-0"><span className="flex items-center gap-2 font-semibold"><Sparkles className="h-5 w-5 shrink-0 text-emerald-500" /> Xe mới về</span><span className="mt-1 block text-sm text-[var(--muted-fg)]">Gắn nhãn xe vừa nhập</span></span>
-              </label>
+              <CarNewArrivalOption key={editItem?.id || 'new'} product={editItem} />
             </div>
           </div>
           <FormField label="Mô tả">
@@ -450,7 +452,7 @@ export default function ProductsPage() {
                 ['Tình trạng', viewItem.condition],
                 ['Nổi bật', viewItem.featured ? 'Có' : 'Không'],
                 ['Trả góp', viewItem.installment ? 'Có' : 'Không'],
-                ['Ngày tạo', formatDate(viewItem.createdAt)],
+                ['Ngày nhập xe', formatDate(viewItem.createdAt)],
                 ['Cập nhật', formatDate(viewItem.updatedAt)],
               ].map(([label, val]) => (
                 <div key={label} className="p-5 rounded-xl bg-[var(--muted)]">

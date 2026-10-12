@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import ts from 'typescript';
+const source = await readFile('src/lib/car-new-arrival.ts', 'utf8');
+const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
+const { canEditNewArrival, newArrivalUpdate, NEW_ARRIVAL_DURATION_MS: week } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
+const created = '2026-10-01T09:30:00+07:00', start = Date.parse(created);
+assert.equal(canEditNewArrival(created, start), true);
+assert.equal(canEditNewArrival(created, start + week - 1), true);
+assert.equal(canEditNewArrival(created, start + week), false);
+assert.equal(canEditNewArrival(created, start - 1), false);
+for (const invalid of [undefined, null, '', 'invalid']) assert.equal(canEditNewArrival(invalid, start), false);
+assert.deepEqual(newArrivalUpdate(created, true, false, start), { newArrival: false });
+assert.deepEqual(newArrivalUpdate(created, false, true, start), { newArrival: true });
+assert.deepEqual(newArrivalUpdate(created, true, true, start), {});
+assert.deepEqual(newArrivalUpdate(created, true, false, start + week), {}, 'Disabled checkboxes must not prevent saving other fields');
+assert.deepEqual(newArrivalUpdate(created, false, true, start + week), {}, 'A form open across expiry cannot submit a late toggle');
+console.log('PASS admin arrival: toggle payloads, exact seven days and saving other fields after expiry');
