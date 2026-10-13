@@ -32,6 +32,7 @@ export const menuItems: MenuItem[] = [
     { label: 'Xem ngày mua xe', href: '/tien-ich/xem-ngay-mua-xe', icon: Calendar },
     { label: 'Định giá xe cũ', href: '/tien-ich/dinh-gia-xe', icon: HandCoins },
     { label: 'Mua xe theo nhu cầu', href: '/tien-ich/mua-xe-theo-nhu-cau', icon: ClipboardCheck, permission: 'car_recommendation.sessions.read' },
+    { label: 'Chi phí sử dụng xe', href: '/tien-ich/chi-phi-su-dung-xe', icon: Gauge, permission: 'ownership.read' },
   ] },
   {
     label: 'Sản phẩm', icon: Car, children: [
@@ -72,6 +73,7 @@ export const menuItems: MenuItem[] = [
   {
     label: 'Bài viết & nội dung', icon: FileText, children: [
       { label: 'Tin tức', href: '/quan-ly/tin-tuc', icon: Newspaper },
+      { label: 'Sự kiện / Khuyến mãi', href: '/quan-ly/khuyen-mai', icon: Calendar, permission: 'content.read' },
       { label: 'Kinh nghiệm sử dụng xe ô tô', href: '/quan-ly/kinh-nghiem-su-dung-xe', icon: BookOpen },
       { label: 'Giới thiệu', href: '/quan-ly/gioi-thieu', icon: Info },
       { label: 'Cảm nhận KH', href: '/quan-ly/cam-nhan-khach-hang', icon: Heart },

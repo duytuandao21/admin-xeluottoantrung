@@ -122,7 +122,9 @@ export default function RichTextEditor({ name, defaultValue = '', placeholder = 
         if (html) insertHtml(sanitizeRichText(html));
         else if (text) insertHtml(text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>'));
       }} onDrop={event => { const image = Array.from(event.dataTransfer.files).find(file => file.type.startsWith('image/')); if (image) { event.preventDefault(); const range = document.caretRangeFromPoint(event.clientX, event.clientY); void insertImage(image, range?.cloneRange()); } }} className="min-h-64 w-full px-5 py-4 text-base leading-7 outline-none whitespace-pre-wrap [&_h2]:my-3 [&_h2]:text-xl [&_h2]:font-bold [&_img]:my-4 [&_img]:max-h-[480px] [&_img]:max-w-full [&_img]:rounded-lg [&_li]:ml-6 [&_ol]:list-decimal [&_p]:my-2 [&_ul]:list-disc" />
-      <input ref={valueRef} type="hidden" name={name} defaultValue={defaultValue} />
+      {/* The initialization effect and syncValue own this field. A React defaultValue
+          resets hidden input values to the original content on parent rerenders. */}
+      <input ref={valueRef} type="hidden" name={name} />
       <p className="border-t border-[var(--border-color)] px-4 py-2 text-xs text-[var(--muted-fg)]">{placeholder} · Dán hoặc kéo thả ảnh trực tiếp vào nội dung.</p>
     </div>
   );
