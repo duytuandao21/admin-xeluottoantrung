@@ -131,7 +131,7 @@ export default function SettingsPage({ title, subtitle, fields, children, settin
                   <Input name={field.name} type={field.type || 'text'} defaultValue={values[field.name] ?? ''} placeholder={field.placeholder} />
                 )}
               </FormField>
-              {field.hint && <p className="mt-1 text-sm text-[var(--muted-fg)]">{field.hint}</p>}
+              {field.hint && field.type !== 'file' && <p className="mt-1 text-sm text-[var(--muted-fg)]">{field.hint}</p>}
             </div>
             </Fragment>
           ))}
