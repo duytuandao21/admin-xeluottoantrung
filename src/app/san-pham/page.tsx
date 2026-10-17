@@ -5,7 +5,7 @@ import { PageHeader, DataTable, StatusBadge, Modal, ConfirmDialog, FormField, In
 import { formatPrice, formatNumber } from '@/lib/format';
 import { slugify } from '@/lib/slug';
 import { api, json, query, type PageResult } from '@/lib/api/client';
-import { carDetail, carToProduct, deleteCar, listCars, saveCar } from '@/lib/api/cars';
+import { carDetail, carToProduct, deleteCar, listCars, saveCar, setCarPublished } from '@/lib/api/cars';
 import { uploadCarImage } from '@/lib/api/media';
 import { Plus, Download, Car, Star, CreditCard, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
@@ -41,6 +41,8 @@ export default function ProductsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
+  const changingStatusRef = useRef(false);
+  const [changingStatusId, setChangingStatusId] = useState<string | null>(null);
   const [deleteItem, setDeleteItem] = useState<Product | null>(null);
   const [viewItem, setViewItem] = useState<Product | null>(null);
   const [brand, setBrand] = useState('');
@@ -99,6 +101,29 @@ export default function ProductsPage() {
     : product.branchName || 'Chưa chọn';
   const getProductListName = (product: Product) => [product.brand, product.model || product.name, product.version, product.year].filter(Boolean).join(' ');
 
+  const toggleStatus = async (product: Product) => {
+    if (changingStatusRef.current || loading || (product.status !== 'active' && product.status !== 'inactive')) return;
+    changingStatusRef.current = true;
+    setChangingStatusId(String(product.id));
+    try {
+      if (product.status === 'active') {
+        // Public reads exclude inactive cars; the existing mutation also invalidates API caches.
+        await saveCar({ status: 'inactive' }, String(product.id));
+      } else {
+        // Publish atomically restores active status and publication, including previously unpublished cars.
+        await setCarPublished(String(product.id), true);
+      }
+      toast.success(product.status === 'active' ? 'Đã ẩn xe khỏi website.' : 'Đã chuyển xe sang đang bán.');
+    } catch (failure) {
+      toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật trạng thái xe.');
+    } finally {
+      // Read the persisted state even if a response was lost after the mutation committed.
+      await reload();
+      changingStatusRef.current = false;
+      setChangingStatusId(null);
+    }
+  };
+
   const columns = [
     { key: 'id', label: 'STT', width: '60px', sortable: true, render: (item: Product) => <span className="text-[var(--muted-fg)]">#{item.id}</span> },
     {
@@ -115,16 +140,20 @@ export default function ProductsPage() {
     { key: 'price', label: 'Giá bán', sortable: true, render: (item: Product) => <span className="font-semibold tabular-nums text-red-600">{formatPrice(item.price)}</span> },
     { key: 'mileage', label: 'Số km', sortable: true, render: (item: Product) => <span>{formatNumber(item.mileage)} km</span> },
     { key: 'transmission', label: 'Hộp số' },
-    { key: 'status', label: 'Trạng thái', render: (item: Product) => <StatusBadge status={item.status} labels={{ active: 'Đang bán', inactive: 'Ẩn', deposit: 'Đã nhận cọc', sold: 'Đã bán' }} /> },
-    { key: 'featured', label: 'Nổi bật', render: (item: Product) => <button type="button" role="switch" aria-checked={item.featured} aria-label={`Nổi bật: ${item.name}`} onClick={() => void toggleCar(item, 'featured')} className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${item.featured ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-600'}`}><span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${item.featured ? 'translate-x-6' : 'translate-x-1'}`} /></button> },
-    { key: 'installment', label: 'Trả góp', render: (item: Product) => <button type="button" role="switch" aria-checked={Boolean(item.installment)} aria-label={`Trả góp: ${item.name}`} onClick={() => void toggleCar(item, 'installment')} className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${item.installment ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-600'}`}><span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${item.installment ? 'translate-x-6' : 'translate-x-1'}`} /></button> },
+    { key: 'status', label: 'Trạng thái', render: (item: Product) => {
+      const badge = <StatusBadge status={item.status} labels={{ active: 'Đang bán', inactive: 'Ẩn', deposit: 'Đã nhận cọc', sold: 'Đã bán' }} />;
+      if (item.status !== 'active' && item.status !== 'inactive') return badge;
+      const action = item.status === 'active' ? 'Ẩn xe' : 'Chuyển sang đang bán';
+      return <button type="button" onClick={() => void toggleStatus(item)}
+        disabled={loading || changingStatusId !== null} aria-busy={changingStatusId === String(item.id)}
+        aria-label={`${action}: ${getProductListName(item)}`} title={action}
+        className="rounded-full cursor-pointer transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-wait disabled:opacity-60">
+        {badge}
+      </button>;
+    } },
     { key: 'createdAt', label: 'Ngày tạo', sortable: true },
   ];
 
-  const toggleCar = async (item: Product, field: 'featured' | 'installment') => {
-    try { await saveCar({ [field]: !item[field] }, String(item.id)); await reload(); }
-    catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật xe.'); }
-  };
   const openAdd = async () => {
     try {
       setTransmissions(await all<GearBox>('/admin/lookups/transmissions'));
