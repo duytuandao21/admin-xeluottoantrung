@@ -1,4 +1,5 @@
 import { api, json } from './client';
+import { readUploadImageDimensions } from './image-dimensions';
 
 interface Presigned { storageKey: string; uploadUrl: string; headers: Record<string, string>; publicUrl: string }
 const imageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/vnd.microsoft.icon', 'image/x-icon'];
@@ -19,7 +20,8 @@ export async function uploadAsset(file: File) {
 export async function uploadCarImage(carId: string, file: File, isCover = false) {
   validate(file);
   if (file.type === 'image/vnd.microsoft.icon' || file.type === 'image/x-icon') throw new Error('Ảnh xe không hỗ trợ định dạng ICO.');
+  const dimensions = await readUploadImageDimensions(file);
   const signed = await api<Presigned>('/admin/media/presign', json('POST', { carId, type: 'image', mimeType: file.type, sizeBytes: file.size }));
   await put(file, signed);
-  return api<{ id: string; publicUrl: string }>(`/admin/cars/${carId}/media`, json('POST', { storageKey: signed.storageKey, type: 'image', mimeType: file.type, sizeBytes: file.size, isCover }));
+  return api<{ id: string; publicUrl: string }>(`/admin/cars/${carId}/media`, json('POST', { storageKey: signed.storageKey, type: 'image', mimeType: file.type, sizeBytes: file.size, isCover, ...dimensions }));
 }
