@@ -1,4 +1,4 @@
-import { api, json, query, type PageResult } from './client';
+import { api, catalogueRows, json, query, type PageResult } from './client';
 import { slugify } from '@/lib/slug';
 
 type Row = Record<string, unknown>;
@@ -51,24 +51,33 @@ export function mapRow(resource: Resource, item: Row): Row {
     minPrice: item.minValue, maxPrice: item.maxValue, minKm: item.minValue, maxKm: item.maxValue,
   };
 }
-export async function listResource(route: string, page = 1, search = ''): Promise<PageResult<Row>> {
+export interface ListOptions { signal?: AbortSignal; sortBy?: string; sortDirection?: 'asc' | 'desc'; brandId?: string; modelId?: string }
+export async function resourceRows(route: string): Promise<Row[]> {
   const resource = resourceFor(route);
+  return (await catalogueRows<Row>(resource.path)).map(row => mapRow(resource, row));
+}
+export async function listResource(route: string, page = 1, search = '', options: ListOptions = {}): Promise<PageResult<Row>> {
+  const resource = resourceFor(route);
+  const { signal, ...params } = options;
+  if (resource.path.endsWith('/car-colors') && params.sortBy === 'title') params.sortBy = 'name';
   if (resource.kind === 'entry') {
-    const list = await api<Row[]>(`${resource.path}${query({ group: resource.group })}`);
+    const list = await api<Row[]>(`${resource.path}${query({ group: resource.group })}`, { signal });
     const filtered = search ? list.filter(row => String(row.title ?? '').toLowerCase().includes(search.toLowerCase())) : list;
+    if (options.sortBy) filtered.sort((a, b) => String(a[options.sortBy!] ?? '').localeCompare(String(b[options.sortBy!] ?? '')) * (options.sortDirection === 'desc' ? -1 : 1) || String(a.id).localeCompare(String(b.id)));
     return { data: filtered.slice((page - 1) * 10, page * 10).map(row => mapRow(resource, row)), meta: { page, limit: 10, total: filtered.length, totalPages: Math.ceil(filtered.length / 10) } };
   }
-  if (resource.kind === 'brand' || resource.kind === 'model') {
-    const list = await api<Row[]>(resource.path);
-    const filtered = search ? list.filter(row => String(row.name ?? '').toLowerCase().includes(search.toLowerCase())) : list;
-    return { data: filtered.slice((page - 1) * 10, page * 10).map(row => mapRow(resource, row)), meta: { page, limit: 10, total: filtered.length, totalPages: Math.ceil(filtered.length / 10) } };
-  }
-  const result = await api<PageResult<Row>>(`${resource.path}${query({ page, limit: 10, search, group: resource.group })}`);
+  const result = await api<PageResult<Row>>(`${resource.path}${query({ page, limit: 10, search, group: resource.group, view: isArticleCollection(resource) ? 'table' : undefined, ...params })}`, { signal });
   if (isArticleCollection(resource)) {
-    const categories = await api<PageResult<{ id: string; name: string }>>('/admin/collections/article-categories?page=1&limit=100');
-    return { ...result, data: result.data.map(row => ({ ...mapRow(resource, row), category: categories.data.find(item => item.id === row.categoryId)?.name || '—' })) };
+    const categories = await catalogueRows<{ id: string; name: string }>('/admin/collections/article-categories');
+    return { ...result, data: result.data.map(row => ({ ...mapRow(resource, row), category: categories.find(item => item.id === row.categoryId)?.name || '—' })) };
   }
   return { ...result, data: result.data.map(row => mapRow(resource, row)) };
+}
+export async function resourceDetail(route: string, item: Row): Promise<Row> {
+  const resource = resourceFor(route);
+  if (!isArticleCollection(resource)) return item;
+  const [detail, categories] = await Promise.all([api<Row>(`${resource.path}/${item.id}`), catalogueRows<{ id: string; name: string }>('/admin/collections/article-categories')]);
+  return { ...mapRow(resource, detail), category: categories.find(category => category.id === detail.categoryId)?.name || '' };
 }
 function payload(resource: Resource, form: Row, editing: boolean): Row {
   const data = { ...form };
@@ -115,8 +124,8 @@ export async function saveResource(route: string, form: Row, old?: Row | null) {
   const data = payload(resource, form, !!old);
   if (isArticleCollection(resource) && form.category) {
     const categoryName = String(form.category);
-    const categories = await api<PageResult<{ id: string; name: string }>>('/admin/collections/article-categories?page=1&limit=100');
-    let category = categories.data.find(item => item.name === categoryName);
+    const categories = await catalogueRows<{ id: string; name: string }>('/admin/collections/article-categories');
+    let category = categories.find(item => item.name === categoryName);
     if (!category) category = await api<{ id: string; name: string }>('/admin/collections/article-categories', json('POST', { name: categoryName, slug: slugify(categoryName) }));
     data.categoryId = category.id;
   }

@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, ReactNode } from 'react';
+import { useRef, useState, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { slugify } from '@/lib/slug';
-import { deleteResource, listResource, saveResource } from '@/lib/api/resources';
+import { useAdminList } from '@/lib/api/use-admin-list';
+import { deleteResource, listResource, resourceDetail, saveResource } from '@/lib/api/resources';
 import { uploadAsset } from '@/lib/api/media';
 import { PageHeader, DataTable, Modal, ConfirmDialog, FormField, Input, Textarea, Select, Button, type Column } from '@/components/ui';
 import { Plus } from 'lucide-react';
@@ -47,19 +48,12 @@ export default function CrudPage<T extends Record<string, unknown>>({
 }: CrudPageProps<T>) {
   const pathname = usePathname();
   const route = storageKey || pathname;
-  const [data, setData] = useState<T[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const reload = useCallback(async () => {
-    setLoading(true); setError('');
-    try { const result = await listResource(route, page, search); setData(result.data as T[]); setTotal(result.meta.total); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : 'Không thể tải dữ liệu.'); setData([]); }
-    finally { setLoading(false); }
-  }, [route, page, search]);
-  useEffect(() => { queueMicrotask(() => void reload()); }, [reload]);
+  const [sort, setSort] = useState<{ sortBy?: string; sortDirection?: 'asc' | 'desc' }>({});
+  const { data, meta, loading, error, reload } = useAdminList<T>(JSON.stringify([route, page, search, sort]),
+    async signal => { const result = await listResource(route, page, search, { signal, ...sort }); if (!signal.aborted && page > Math.max(1, result.meta.totalPages)) setPage(Math.max(1, result.meta.totalPages)); return { ...result, data: result.data as T[] }; });
+  const total = meta.total;
   const [editItem, setEditItem] = useState<T | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [deleteItem, setDeleteItem] = useState<T | null>(null);
@@ -70,11 +64,17 @@ export default function CrudPage<T extends Record<string, unknown>>({
   const hasSlug = editableFields.some(field => field.name === 'slug');
   const slugSourceField = editableFields.some(field => field.name === nameField) ? nameField : 'title';
 
+  const actionRef = useRef(false);
+  const detailRevision = useRef(0);
   const handleDelete = async () => {
+    if (actionRef.current) return;
+    actionRef.current = true;
+    try {
     if (deleteItem) {
       try { await deleteResource(route, deleteItem); toast.success('Đã xóa thành công!'); setDeleteItem(null); await reload(); }
       catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể xóa.'); }
     }
+    } finally { actionRef.current = false; }
   };
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -151,12 +151,18 @@ export default function CrudPage<T extends Record<string, unknown>>({
 
   const isOpen = showAdd || !!editItem;
   const toggleBoolean = async (item: T, field: string) => {
+    if (actionRef.current) return;
+    actionRef.current = true;
     try { await saveResource(route, { [field]: !Boolean(item[field]) }, item); await reload(); }
     catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật.'); }
+    finally { actionRef.current = false; }
   };
   const toggleStatus = async (item: T) => {
+    if (actionRef.current) return;
+    actionRef.current = true;
     try { await saveResource(route, { status: item.status === 'active' ? 'inactive' : 'active' }, item); await reload(); }
     catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật hiển thị.'); }
+    finally { actionRef.current = false; }
   };
   const listColumns = columns.filter(column => column.key !== 'order' || column.label === 'STT').map(column => statusToggle && column.key === 'status' ? {
     ...column,
@@ -169,7 +175,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
   return (
     <div className="space-y-6">
       {!isOpen && <><PageHeader title={title} subtitle={subtitle || `${total} mục`} actions={
-        <Button size="sm" onClick={() => { setSlugPreview(''); setShowAdd(true); }}><Plus className="w-4 h-4" /> Thêm mới</Button>
+        <Button size="sm" onClick={() => { detailRevision.current++; setSlugPreview(''); setShowAdd(true); }}><Plus className="w-4 h-4" /> Thêm mới</Button>
       } />
 
       {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error} <button type="button" className="underline" onClick={() => void reload()}>Thử lại</button></div>}
@@ -177,14 +183,14 @@ export default function CrudPage<T extends Record<string, unknown>>({
         columns={listColumns as Column<T>[]}
         data={data}
         emptyMessage={loading ? 'Đang tải dữ liệu...' : undefined}
-        remote={{ page, total, perPage: 10, search, onPage: setPage, onSearch: value => { setPage(1); setSearch(value); } }}
+        remote={{ ...sort, onSort: (sortBy, sortDirection) => { setPage(1); setSort({ sortBy, sortDirection }); }, page, total, perPage: 10, search, onPage: setPage, onSearch: value => { setPage(1); setSearch(value); } }}
         searchPlaceholder={searchPlaceholder}
         searchFields={searchFields}
-        onEdit={(item) => { setSlugPreview(slugify(String(item[slugSourceField] || ''))); setEditItem(item as T); }}
+        onEdit={item => { const revision = ++detailRevision.current; void resourceDetail(route, item).then(detail => { if (revision !== detailRevision.current) return; setSlugPreview(slugify(String(detail[slugSourceField] || ''))); setEditItem(detail as T); }).catch(failure => { if (revision === detailRevision.current) toast.error(failure instanceof Error ? failure.message : 'Không thể tải dữ liệu.'); }); }}
         onDelete={(item) => setDeleteItem(item as T)}
       /></>}
 
-      <Modal open={isOpen} onClose={() => { if (savingRef.current) return; setEditItem(null); setShowAdd(false); }} title={editItem ? `Sửa ${title.toLowerCase()}` : `Thêm ${title.toLowerCase()}`} size="md">
+      <Modal open={isOpen} onClose={() => { if (savingRef.current) return; detailRevision.current++; setEditItem(null); setShowAdd(false); }} title={editItem ? `Sửa ${title.toLowerCase()}` : `Thêm ${title.toLowerCase()}`} size="md">
         <form key={editItem ? String(editItem[idField]) : 'new'} onSubmit={handleSave} className="space-y-7">
           <div className="border-b border-[var(--border-color)] pb-5"><h2 className="text-xl font-semibold">Thông tin {title.toLowerCase()}</h2><p className="mt-1 text-sm text-[var(--muted-fg)]">Các trường có dấu * là bắt buộc.</p></div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">

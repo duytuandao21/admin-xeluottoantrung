@@ -4,17 +4,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import CrudPage from '@/components/CrudPage';
 import { StatusBadge } from '@/components/ui';
-import { api, type PageResult } from '@/lib/api/client';
+import { catalogueRows } from '@/lib/api/client';
 import { formatNumber } from '@/lib/format';
 
 type Lookup = { id: string; name: string };
 
-async function allOptions(path: string): Promise<Lookup[]> {
-  const first = await api<PageResult<Lookup>>(`${path}?page=1&limit=100`);
-  const rest = await Promise.all(Array.from({ length: Math.max(0, first.meta.totalPages - 1) }, (_, index) =>
-    api<PageResult<Lookup>>(`${path}?page=${index + 2}&limit=100`)));
-  return [...first.data, ...rest.flatMap(result => result.data)];
-}
+const allOptions = (path: string) => catalogueRows<Lookup>(path);
 
 export default function AccessoriesPage() {
   const [brands, setBrands] = useState<Lookup[]>([]);
@@ -36,7 +31,7 @@ export default function AccessoriesPage() {
       columns={[
         { key: 'imageUrl', label: 'Ảnh', render: item => item.imageUrl
           ? <img src={String(item.imageUrl)} alt="" className="h-14 w-20 rounded-lg object-cover" /> : '—' },
-        { key: 'name', label: 'Tên phụ kiện', render: item => <strong className="font-semibold">{String(item.name)}</strong> },
+        { key: 'name', label: 'Tên phụ kiện', render: item => <strong className="block max-w-[160px] truncate font-semibold sm:max-w-[240px]" title={String(item.name)}>{String(item.name)}</strong> },
         { key: 'brand', label: 'Thương hiệu' },
         { key: 'categoryId', label: 'Danh mục', render: item => categories.find(category => category.id === item.categoryId)?.name || 'Chưa phân loại' },
         { key: 'price', label: 'Giá bán', render: item => `${formatNumber(Number(item.price))} đ` },

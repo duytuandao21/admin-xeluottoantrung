@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Button, DataTable, Input, Select } from '@/components/ui';
 import { query, type PageResult } from '@/lib/api/client';
+import { useDebouncedValue } from '@/lib/api/use-admin-list';
 import { defaultDateRange, eventLabels, labelsFor, needsBase, shortMoney, type SessionRow, type Settings } from '@/lib/car-recommendations';
 import { formatDate } from '@/lib/date';
 import { Field, LoadState, Panel, useNeedsData } from './shared';
@@ -9,7 +10,8 @@ import Details from './Details';
 const initialFilters = () => ({ ...defaultDateRange(), minBudget: '', maxBudget: '', purpose: '', priority: '', passengers: '', resultCount: '', interaction: '' });
 export default function History({ settings, revision }: { settings: Settings; revision: number }) {
   const [draft, setDraft] = useState(initialFilters), [filters, setFilters] = useState(initialFilters), [page, setPage] = useState(1), [search, setSearch] = useState(''), [selected, setSelected] = useState<string | null>(null), [retry, setRetry] = useState(0);
-  const resource = useNeedsData<PageResult<SessionRow>>(`${needsBase}/sessions${query({ ...filters, page, limit: 10, search: search.length >= 8 ? search : undefined })}`, revision + retry);
+  const term = useDebouncedValue(search);
+  const resource = useNeedsData<PageResult<SessionRow>>(`${needsBase}/sessions${query({ ...filters, page, limit: 10, search: term.length >= 8 ? term : undefined })}`, revision + retry);
   const labels = labelsFor(settings), change = (key: keyof typeof draft, value: string) => setDraft(old => ({ ...old, [key]: value }));
   if (selected) return <Details id={selected} close={() => setSelected(null)} />;
   return <div className="space-y-5">

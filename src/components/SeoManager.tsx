@@ -86,6 +86,8 @@ function SeoEditor({ record, canEdit, onBack, onSaved }: { record: SeoRecord; ca
       const payload = { routePath, metaTitle: values.metaTitle, metaDescription: values.metaDescription, keywords: values.keywords,
         ogTitle: values.ogTitle, ogDescription: values.ogDescription, ogImageUrl: values.ogImageUrl, canonicalUrl: values.canonicalUrl,
         robotsIndex: values.robotsIndex, robotsFollow: values.robotsFollow };
+      if (record.ogImageUrl && payload.ogImageUrl !== record.ogImageUrl && !form.has('ogImage__remove'))
+        throw new Error('Nhấn dấu × ở ảnh hiện tại trước khi đổi đường dẫn ảnh.');
       const image = form.get('ogImage');
       if (image instanceof File && image.size) payload.ogImageUrl = await uploadAsset(image);
       else if (form.has('ogImage__remove') && values.ogImageUrl === record.ogImageUrl) payload.ogImageUrl = null;

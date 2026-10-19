@@ -28,12 +28,6 @@ interface MenuItem {
 export const menuItems: MenuItem[] = [
   { label: 'Tổng quan', href: '/', icon: LayoutDashboard },
   { label: 'Thống kê', href: '/thong-ke', icon: BarChart3 },
-  { label: 'Tiện ích', icon: Wrench, children: [
-    { label: 'Xem ngày mua xe', href: '/tien-ich/xem-ngay-mua-xe', icon: Calendar },
-    { label: 'Định giá xe cũ', href: '/tien-ich/dinh-gia-xe', icon: HandCoins },
-    { label: 'Mua xe theo nhu cầu', href: '/tien-ich/mua-xe-theo-nhu-cau', icon: ClipboardCheck, permission: 'car_recommendation.sessions.read' },
-    { label: 'Chi phí sử dụng xe', href: '/tien-ich/chi-phi-su-dung-xe', icon: Gauge, permission: 'ownership.read' },
-  ] },
   {
     label: 'Sản phẩm', icon: Car, children: [
       { label: 'Danh sách xe', href: '/san-pham', icon: Car },
@@ -140,6 +134,14 @@ export const menuItems: MenuItem[] = [
       { label: 'Đánh giá KH', href: '/seo/danh-gia-khach-hang', icon: Heart },
       { label: 'Mua xe', href: '/seo/mua-xe', icon: ShoppingCart },
       { label: 'Bài viết', href: '/seo/tin-tuc', icon: Newspaper },
+    ]
+  },
+  {
+    label: 'Tiện ích', icon: Wrench, children: [
+      { label: 'Xem ngày mua xe', href: '/tien-ich/xem-ngay-mua-xe', icon: Calendar },
+      { label: 'Định giá xe cũ', href: '/tien-ich/dinh-gia-xe', icon: HandCoins },
+      { label: 'Mua xe theo nhu cầu', href: '/tien-ich/mua-xe-theo-nhu-cau', icon: ClipboardCheck, permission: 'car_recommendation.sessions.read' },
+      { label: 'Chi phí sử dụng xe', href: '/tien-ich/chi-phi-su-dung-xe', icon: Gauge, permission: 'ownership.read' },
     ]
   },
   {

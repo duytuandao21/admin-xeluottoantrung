@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, ChevronRight, Fuel, Gauge, Plus, Save, Trash2, Wrench } from 'lucide-react';
 import { Button, DataTable, Input, Select } from '@/components/ui';
 import { api, json, query, type PageResult } from '@/lib/api/client';
+import { useDebouncedValue } from '@/lib/api/use-admin-list';
 import { ownershipBase, type Policy, type Profile, type Scope } from '@/lib/ownership';
 import PolicyForm from './PolicyForm';
 import { ConfirmAction, EmptyState, LoadState, Panel, SectionHeading, useDraftGuard, useOwnershipData } from './shared';
@@ -22,7 +23,8 @@ function TargetPicker({ scope, value, change }: { scope: Scope; value: string; c
 }
 export default function Profiles({ policy, writable, revision, onDirtyChange }: { policy: Policy; writable: boolean; revision: number; onDirtyChange?: (dirty: boolean) => void }) {
   const [page, setPage] = useState(1), [search, setSearch] = useState(''), [refresh, setRefresh] = useState(0), [editing, setEditing] = useState<EditableProfile | null>(null), [baseline, setBaseline] = useState(''), [section, setSection] = useState('energy'), [error, setError] = useState(''), [busy, setBusy] = useState(false), [confirmation, setConfirmation] = useState<EditableProfile | 'save' | null>(null);
-  const rows = useOwnershipData<PageResult<EditableProfile>>(`${ownershipBase}/profiles${query({ page, limit: 20, search })}`, refresh + revision);
+  const term = useDebouncedValue(search);
+  const rows = useOwnershipData<PageResult<EditableProfile>>(`${ownershipBase}/profiles${query({ page, limit: 20, search: term })}`, refresh + revision);
   const dirty = !!editing && JSON.stringify(editing) !== baseline;
   useDraftGuard(dirty, onDirtyChange);
   const edit = (row: EditableProfile) => { const draft = structuredClone(row); setEditing(draft); setBaseline(JSON.stringify(draft)); setSection('energy'); setError(''); };

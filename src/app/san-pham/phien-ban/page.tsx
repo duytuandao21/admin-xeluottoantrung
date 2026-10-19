@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8,26 +8,26 @@ import { Button, ConfirmDialog, DataTable, FormField, Input, Modal, PageHeader, 
 import CategoryThumbnail from '@/components/CategoryThumbnail';
 import ImageUpload from '@/components/ImageUpload';
 import { slugify } from '@/lib/slug';
-import { api, json } from '@/lib/api/client';
+import { api, catalogueRows, json } from '@/lib/api/client';
 import { uploadAsset } from '@/lib/api/media';
 import { useResourceRows } from '@/lib/api/use-resource';
+import { useAdminList, useWriteAction } from '@/lib/api/use-admin-list';
 import { listResource } from '@/lib/api/resources';
 import type { Category } from '@/lib/types';
 
 export default function VersionsPage() {
-  const [versions, setVersions] = useState<Category[]>([]);
+  const write = useWriteAction();
   const brands = useResourceRows<Category>('/danh-muc/cap-1');
   const models = useResourceRows<Category>('/danh-muc/cap-2');
-  const [error, setError] = useState('');
-  const reload = async () => {
-    try {
-      const first = await listResource('/san-pham/phien-ban', 1);
-      const rows = [...first.data];
-      for (let page = 2; page <= first.meta.totalPages; page++) rows.push(...(await listResource('/san-pham/phien-ban', page)).data);
-      setVersions(rows as unknown as Category[]); setError('');
-    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Không thể tải phiên bản xe.'); }
-  };
-  useEffect(() => { queueMicrotask(() => void reload()); }, []);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [filterBrand, setFilterBrand] = useState('');
+  const [filterModel, setFilterModel] = useState('');
+  const [sort, setSort] = useState<{ sortBy?: string; sortDirection?: 'asc' | 'desc' }>({});
+  const { data: versions, meta, error, reload } = useAdminList<Category>(JSON.stringify([page, search, filterBrand, filterModel, sort]), async signal => {
+    const result = await listResource('/san-pham/phien-ban', page, search, { signal, brandId: filterBrand, modelId: filterModel, ...sort });
+    if (!signal.aborted && page > Math.max(1, result.meta.totalPages)) setPage(Math.max(1, result.meta.totalPages)); return { ...result, data: result.data as unknown as Category[] };
+  });
   const [editing, setEditing] = useState<Category | null>(null);
   const [adding, setAdding] = useState(false);
   const savingRef = useRef(false);
@@ -36,17 +36,10 @@ export default function VersionsPage() {
   const [brandId, setBrandId] = useState('');
   const [modelId, setModelId] = useState('');
   const [name, setName] = useState('');
-  const [filterBrand, setFilterBrand] = useState('');
-  const [filterModel, setFilterModel] = useState('');
+
 
   const selectedBrand = brands.find(brand => String(brand.id) === brandId);
   const availableModels = models.filter(model => model.parentId === selectedBrand?.id && (model.status === 'active' || model.id === editing?.parentId));
-  const filteredVersions = versions.filter(version => {
-    const model = models.find(candidate => candidate.id === version.parentId);
-    return (!filterBrand || String(model?.parentId) === filterBrand) && (!filterModel || String(model?.id) === filterModel);
-  });
-
-
   const openAdd = () => {
     setBrandId('');
     setModelId('');
@@ -88,7 +81,11 @@ export default function VersionsPage() {
       toast.error('Tên phiên bản cần có chữ hoặc số.');
       return;
     }
-    if (versions.some(version => version.id !== editing?.id && version.parentId === model.id && version.name.toLocaleLowerCase('vi') === trimmedName.toLocaleLowerCase('vi'))) {
+    // Preserve the full-model duplicate check without downloading every model's versions.
+    let siblings: (Category & { modelId: string })[];
+    try { siblings = await catalogueRows<Category & { modelId: string }>(`/admin/lookups/car-versions?modelId=${model.id}`); }
+    catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể kiểm tra phiên bản.'); return; }
+    if (siblings.some(version => version.id !== editing?.id && version.name.toLocaleLowerCase('vi') === trimmedName.toLocaleLowerCase('vi'))) {
       toast.error('Phiên bản này đã có trong dòng xe đã chọn.');
       return;
     }
@@ -130,12 +127,12 @@ export default function VersionsPage() {
     <div className="space-y-6">
       {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error}</div>}
       {!adding && !editing && <>
-        <PageHeader title="Phiên bản xe" subtitle={`${versions.length} phiên bản`} actions={<Button size="sm" onClick={openAdd}><Plus className="h-4 w-4" /> Thêm phiên bản</Button>} />
+        <PageHeader title="Phiên bản xe" subtitle={`${meta.total} phiên bản`} actions={<Button size="sm" onClick={openAdd}><Plus className="h-4 w-4" /> Thêm phiên bản</Button>} />
         <div className="flex flex-wrap gap-3">
-          <Select value={filterBrand} onChange={event => { setFilterBrand(event.target.value); setFilterModel(''); }} className="max-w-56"><option value="">Tất cả hãng xe</option>{brands.map(brand => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</Select>
-          <Select value={filterModel} onChange={event => setFilterModel(event.target.value)} className="max-w-56"><option value="">Tất cả dòng xe</option>{models.filter(model => !filterBrand || String(model.parentId) === filterBrand).map(model => <option key={model.id} value={model.id}>{model.name}</option>)}</Select>
+          <Select value={filterBrand} onChange={event => { setPage(1); setFilterBrand(event.target.value); setFilterModel(''); }} className="max-w-56"><option value="">Tất cả hãng xe</option>{brands.map(brand => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</Select>
+          <Select value={filterModel} onChange={event => { setPage(1); setFilterModel(event.target.value); }} className="max-w-56"><option value="">Tất cả dòng xe</option>{models.filter(model => !filterBrand || String(model.parentId) === filterBrand).map(model => <option key={model.id} value={model.id}>{model.name}</option>)}</Select>
         </div>
-        <DataTable columns={columns} data={filteredVersions as unknown as Record<string, unknown>[]} searchPlaceholder="Tìm phiên bản xe..." searchFields={['name', 'slug']} onEdit={item => openEdit(item as unknown as Category)} onDelete={item => setDeleting(item as unknown as Category)} />
+        <DataTable columns={columns} data={versions as unknown as Record<string, unknown>[]} remote={{ page, total: meta.total, perPage: 10, search, onPage: setPage, onSearch: value => { setPage(1); setSearch(value); }, ...sort, onSort: (sortBy, sortDirection) => { setPage(1); setSort({ sortBy, sortDirection }); } }} searchPlaceholder="Tìm phiên bản xe..." searchFields={['name', 'slug']} onEdit={item => openEdit(item as unknown as Category)} onDelete={item => setDeleting(item as unknown as Category)} />
       </>}
 
       <Modal open={adding || !!editing} onClose={closeForm} title={editing ? 'Sửa phiên bản xe' : 'Thêm phiên bản xe'}>
@@ -162,7 +159,7 @@ export default function VersionsPage() {
           <div className="flex justify-end gap-3 border-t border-[var(--border-color)] pt-4"><Button type="button" variant="secondary" disabled={saving} onClick={closeForm}>Hủy</Button><Button type="submit" disabled={saving}>{saving ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Thêm mới'}</Button></div>
         </form>
       </Modal>
-      <ConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={async () => { if (deleting) { try { await api(`/admin/lookups/car-versions/${deleting.id}`, json('DELETE')); setDeleting(null); toast.success('Đã xóa phiên bản xe.'); await reload(); } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể xóa phiên bản.'); } } }} message={`Xóa phiên bản "${deleting?.name || ''}"?`} />
+      <ConfirmDialog open={!!deleting} onClose={() => setDeleting(null)} onConfirm={() => write(async () => { if (deleting) { try { await api(`/admin/lookups/car-versions/${deleting.id}`, json('DELETE')); setDeleting(null); toast.success('Đã xóa phiên bản xe.'); await reload(); } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể xóa phiên bản.'); } } })} message={`Xóa phiên bản "${deleting?.name || ''}"?`} />
     </div>
   );
 }

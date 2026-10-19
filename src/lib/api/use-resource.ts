@@ -1,18 +1,17 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { listResource } from './resources';
+import { resourceRows } from './resources';
+import { toast } from 'sonner';
 
 export function useResourceRows<T>(route: string): T[] {
   const [rows, setRows] = useState<T[]>([]);
   useEffect(() => {
     let live = true;
     const load = async () => {
-      const first = await listResource(route, 1);
-      const data = [...first.data];
-      for (let page = 2; page <= first.meta.totalPages; page++) data.push(...(await listResource(route, page)).data);
+      const data = await resourceRows(route);
       if (live) setRows(data as T[]);
     };
-    void load().catch(() => { if (live) setRows([]); });
+    void load().catch(failure => { if (live) toast.error(failure instanceof Error ? failure.message : 'Không thể tải danh mục.'); });
     return () => { live = false; };
   }, [route]);
   return rows;

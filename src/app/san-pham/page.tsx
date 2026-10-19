@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { PageHeader, DataTable, StatusBadge, Modal, ConfirmDialog, FormField, Input, Select, Button, type Column } from '@/components/ui';
 import { formatPrice, formatNumber } from '@/lib/format';
 import { slugify } from '@/lib/slug';
-import { api, json, query, type PageResult } from '@/lib/api/client';
+import { api, catalogueRows, json } from '@/lib/api/client';
+import { useAdminList, useWriteAction } from '@/lib/api/use-admin-list';
 import { carDetail, carToProduct, deleteCar, listCars, saveCar, setCarPublished } from '@/lib/api/cars';
 import { uploadCarImage } from '@/lib/api/media';
 import { Plus, Download, Car, Star, CreditCard, MapPin } from 'lucide-react';
@@ -23,7 +24,7 @@ import CarNewArrivalOption from '@/components/CarNewArrivalOption';
 import { newArrivalUpdate } from '@/lib/car-new-arrival';
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const write = useWriteAction();
   const [categories, setCategories] = useState<Category[]>([]);
   const [subCategories, setSubCategories] = useState<Category[]>([]);
   const [versions, setVersions] = useState<Category[]>([]);
@@ -32,10 +33,8 @@ export default function ProductsPage() {
   const [managedColors, setManagedColors] = useState<ManagedCarColor[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [mediaIds, setMediaIds] = useState<Record<string, string>>({});
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editItem, setEditItem] = useState<Product | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -53,29 +52,24 @@ export default function ProductsPage() {
   const [filterModel, setFilterModel] = useState('');
   const [filterVersion, setFilterVersion] = useState('');
   const [slugPreview, setSlugPreview] = useState('');
-  const all = useCallback(async <T,>(path: string): Promise<T[]> => {
-    const first = await api<PageResult<T>>(`${path}${query({ page: 1, limit: 100 })}`);
-    const rows = [...first.data];
-    for (let next = 2; next <= first.meta.totalPages; next++) rows.push(...(await api<PageResult<T>>(`${path}${query({ page: next, limit: 100 })}`)).data);
-    return rows;
-  }, []);
-  const reload = useCallback(async () => {
-    setLoading(true); setError('');
-    try {
-      const result = await listCars({ page, search, brand: categories.find(c => c.name === filterBrand)?.slug, model: subCategories.find(c => c.name === filterModel)?.slug, version: versions.find(c => c.name === filterVersion)?.slug });
-      setProducts(result.data.map(carToProduct)); setTotal(result.meta.total);
-    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Không thể tải danh sách xe.'); setProducts([]); }
-    finally { setLoading(false); }
-  }, [page, search, filterBrand, filterModel, filterVersion, categories, subCategories, versions]);
-  useEffect(() => { queueMicrotask(() => void reload()); }, [reload]);
+  const all = useCallback(<T,>(path: string) => catalogueRows<T>(path), []);
+  const [sort, setSort] = useState<{ sortBy?: string; sortDirection?: 'asc' | 'desc' }>({});
+  const list = useAdminList<Product>(JSON.stringify([page, search, filterBrand, filterModel, filterVersion, sort]), async signal => {
+    const result = await listCars({ page, search, brand: categories.find(c => c.name === filterBrand)?.slug, model: subCategories.find(c => c.name === filterModel)?.slug, version: versions.find(c => c.name === filterVersion)?.slug, ...sort }, signal);
+    if (!signal.aborted && page > Math.max(1, result.meta.totalPages)) setPage(Math.max(1, result.meta.totalPages)); return { ...result, data: result.data.map(carToProduct) };
+  });
+  const { data: products, loading, reload, meta: { total } } = list;
+  const loadVersions = async (modelId?: string) => {
+    const rows = await all<Category & { modelId: number }>(`/admin/lookups/car-versions${modelId ? `?modelId=${modelId}` : ''}`);
+    setVersions(current => [...current.filter(item => !rows.some(row => row.id === item.id) && (!modelId || String(item.parentId) !== modelId)), ...rows.map(row => ({ ...row, parentId: row.modelId }))]);
+  };
   useEffect(() => {
     void Promise.all([
-      api<Category[]>('/admin/brands'), api<Category[]>('/admin/car-models'), all<Category>('/admin/lookups/car-versions'),
+      all<Category>('/admin/brands'), all<Category>('/admin/car-models'),
       all<CarAttribute>('/admin/lookups/body-styles'), all<GearBox>('/admin/lookups/transmissions'),
       all<ManagedCarColor>('/admin/lookups/car-colors'), all<Branch>('/admin/lookups/branches'),
-    ]).then(([brands, models, versions, styles, gearboxes, colors, branches]) => {
+    ]).then(([brands, models, styles, gearboxes, colors, branches]) => {
       setCategories(brands); setSubCategories(models.map(model => ({ ...model, parentId: (model as unknown as { brandId: number }).brandId })));
-      setVersions(versions.map(version => ({ ...version, parentId: (version as unknown as { modelId: number }).modelId })));
       setBodyStyles(styles); setTransmissions(gearboxes);
       setManagedColors(colors.map(color => ({ ...color, title: (color as unknown as { name: string }).name })));
       setBranches(branches);
@@ -85,6 +79,15 @@ export default function ProductsPage() {
   const selectedBrand = categories.find(category => category.name === brand);
   const availableModels = subCategories.filter(category => category.parentId === selectedBrand?.id && (category.status === 'active' || (editItem?.brand === brand && editItem.model === category.name)));
   const selectedModel = availableModels.find(category => category.name === model);
+  const formModelId = selectedModel ? String(selectedModel.id) : '';
+  useEffect(() => {
+    if (!formModelId || (!showAdd && !editItem)) return;
+    let live = true;
+    void catalogueRows<Category & { modelId: number }>(`/admin/lookups/car-versions?modelId=${formModelId}`).then(rows => {
+      if (live) setVersions(current => [...current.filter(item => String(item.parentId) !== formModelId), ...rows.map(row => ({ ...row, parentId: row.modelId }))]);
+    }).catch(failure => { if (live) setError(failure instanceof Error ? failure.message : 'Không thể tải phiên bản.'); });
+    return () => { live = false; };
+  }, [formModelId, showAdd, editItem]);
   const selectedBodyStyle = bodyStyles.find(style => style.id === selectedModel?.bodyStyleId);
   const availableColors = managedColors.filter(color => color.status === 'active' || (editItem && color.title === editItem.color));
   const colorPreview = managedColors.find(color => color.title === selectedColor);
@@ -139,7 +142,7 @@ export default function ProductsPage() {
     },
     { key: 'price', label: 'Giá bán', sortable: true, render: (item: Product) => <span className="font-semibold tabular-nums text-red-600">{formatPrice(item.price)}</span> },
     { key: 'mileage', label: 'Số km', sortable: true, render: (item: Product) => <span>{formatNumber(item.mileage)} km</span> },
-    { key: 'transmission', label: 'Hộp số' },
+    { key: 'licensePlate', label: 'Biển số xe', render: (item: Product) => item.licensePlate || '—' },
     { key: 'status', label: 'Trạng thái', render: (item: Product) => {
       const badge = <StatusBadge status={item.status} labels={{ active: 'Đang bán', inactive: 'Ẩn', deposit: 'Đã nhận cọc', sold: 'Đã bán' }} />;
       if (item.status !== 'active' && item.status !== 'inactive') return badge;
@@ -191,12 +194,12 @@ export default function ProductsPage() {
         newArrival: Boolean(detail.newArrival ?? product.newArrival), updatedAt: String(detail.updatedAt || product.updatedAt) });
     } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể tải chi tiết xe.'); }
   };
-  const handleDelete = async () => {
+  const handleDelete = () => write(async () => {
     if (deleteItem) {
       try { await deleteCar(String(deleteItem.id)); toast.success('Đã xóa sản phẩm thành công!'); setDeleteItem(null); await reload(); }
       catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể xóa xe.'); }
     }
-  };
+  });
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -243,10 +246,13 @@ export default function ProductsPage() {
     const removedGallery = new Set(form.getAll('gallery__removeIndex').map(index => Number(index)));
     const remainingGallery = currentImages.slice(1).filter((_, index) => !removedGallery.has(index));
     const coverFile = form.get('cover');
-    const images = [...(!form.has('cover__remove') && !(coverFile instanceof File && coverFile.size) && currentImages[0] ? [currentImages[0]] : []), ...remainingGallery];
+    const images = [...(!form.has('cover__remove') && currentImages[0] ? [currentImages[0]] : []), ...remainingGallery];
     try {
       const gallery = form.getAll('gallery').filter((entry): entry is File => entry instanceof File && entry.size > 0);
       if (images.length + gallery.length + (coverFile instanceof File && coverFile.size ? 1 : 0) > 10) throw new Error('Mỗi xe chỉ được có tối đa 10 ảnh.');
+      const newFiles = [...gallery, ...(coverFile instanceof File && coverFile.size ? [coverFile] : [])];
+      if (newFiles.some(file => file.size > 10_000_000 || !['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.type)))
+        throw new Error('Ảnh xe phải là JPEG, PNG, WebP hoặc AVIF và nhỏ hơn 10 MB.');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Không thể lưu ảnh.');
       return;
@@ -272,11 +278,11 @@ export default function ProductsPage() {
       const saved = await saveCar({ ...fields, ...(editItem ? {} : { slug: slugify(fields.name) }) }, editItem ? String(editItem.id) : undefined);
       const carId = String(saved.id);
       savedCarId = carId;
-      if (coverFile instanceof File && coverFile.size) await uploadCarImage(carId, coverFile, true);
-      for (const file of form.getAll('gallery')) if (file instanceof File && file.size) await uploadCarImage(carId, file);
       if (editItem) for (const url of currentImages.filter(url => !images.includes(url))) {
         const mediaId = mediaIds[url]; if (mediaId) await api(`/admin/cars/${carId}/media/${mediaId}`, json('DELETE'));
       }
+      if (coverFile instanceof File && coverFile.size) await uploadCarImage(carId, coverFile, true);
+      for (const file of form.getAll('gallery')) if (file instanceof File && file.size) await uploadCarImage(carId, file);
       if (fields.status !== 'inactive') await api(`/admin/cars/${carId}/publish`, json('POST'));
       else if (editItem) await api(`/admin/cars/${carId}/unpublish`, json('POST'));
       toast.success(editItem ? 'Đã cập nhật sản phẩm!' : 'Đã thêm sản phẩm mới!'); await reload();
@@ -326,16 +332,16 @@ export default function ProductsPage() {
       <div className="flex flex-wrap gap-3">
         <Select value={filterBrand} onChange={event => { setPage(1); setFilterBrand(event.target.value); setFilterModel(''); setFilterVersion(''); }} className="max-w-52"><option value="">Tất cả hãng xe</option>{categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}</Select>
         <Select value={filterModel} onChange={event => { setPage(1); setFilterModel(event.target.value); setFilterVersion(''); }} className="max-w-52"><option value="">Tất cả dòng xe</option>{subCategories.filter(item => !filterBrand || String(item.parentId) === String(categories.find(brand => brand.name === filterBrand)?.id)).map(item => <option key={item.id} value={item.name}>{item.name}</option>)}</Select>
-        <Select value={filterVersion} onChange={event => { setPage(1); setFilterVersion(event.target.value); }} className="max-w-52"><option value="">Tất cả phiên bản</option>{versions.filter(item => !filterModel || String(item.parentId) === String(subCategories.find(model => model.name === filterModel)?.id)).map(item => <option key={item.id} value={item.name}>{item.name}</option>)}</Select>
+        <Select onFocus={() => { void loadVersions().catch(failure => setError(failure instanceof Error ? failure.message : 'Không thể tải phiên bản.')); }} value={filterVersion} onChange={event => { setPage(1); setFilterVersion(event.target.value); }} className="max-w-52"><option value="">Tất cả phiên bản</option>{versions.filter(item => !filterModel || String(item.parentId) === String(subCategories.find(model => model.name === filterModel)?.id)).map(item => <option key={item.id} value={item.name}>{item.name}</option>)}</Select>
       </div>
-      {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error} <button className="underline" onClick={() => void reload()}>Thử lại</button></div>}
+      {(error || list.error) && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error || list.error} <button className="underline" onClick={() => void reload()}>Thử lại</button></div>}
       <DataTable
         columns={columns as unknown as Column<Record<string, unknown>>[]}
         data={visibleProducts as unknown as Record<string, unknown>[]}
         emptyMessage={loading ? 'Đang tải dữ liệu...' : undefined}
-        remote={{ page, total, perPage: 10, search, onPage: setPage, onSearch: value => { setPage(1); setSearch(value); } }}
-        searchPlaceholder="Tìm kiếm theo tên xe, hãng..."
-        searchFields={['name', 'brand', 'model']}
+        remote={{ ...sort, onSort: (sortBy, sortDirection) => { setPage(1); setSort({ sortBy, sortDirection }); }, page, total, perPage: 10, search, onPage: setPage, onSearch: value => { setPage(1); setSearch(value); } }}
+        searchPlaceholder="Tìm theo tên xe, biển số hoặc mã xe..."
+        searchFields={['name', 'brand', 'model', 'licensePlate']}
         onEdit={(item) => { void openEdit(item as unknown as Product); }}
         onDelete={(item) => setDeleteItem(item as unknown as Product)}
         onView={(item) => { void openView(item as unknown as Product); }}

@@ -133,7 +133,7 @@ export interface DataTableProps<T = Record<string, unknown>> {
   searchFields?: string[];
   actions?: (item: T) => ReactNode;
   emptyMessage?: string;
-  remote?: { page: number; total: number; perPage: number; search: string; onPage: (page: number) => void; onSearch: (search: string) => void };
+  remote?: { page: number; total: number; perPage: number; search: string; onPage: (page: number) => void; onSearch: (search: string) => void; sortBy?: string; sortDirection?: 'asc' | 'desc'; onSort?: (key: string, direction: 'asc' | 'desc') => void };
 }
 
 export function DataTable<T extends Record<string, unknown> = Record<string, unknown>>({
@@ -155,7 +155,7 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
   }
 
   // Sort
-  if (sortKey) {
+  if (sortKey && !remote?.onSort) {
     filtered = [...filtered].sort((a, b) => {
       const av = a[sortKey], bv = b[sortKey];
       if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
@@ -170,6 +170,7 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
   const goPage = (next: number) => remote ? remote.onPage(next) : setPage(next);
 
   const handleSort = (key: string) => {
+    if (remote?.onSort) { remote.onSort(key, remote.sortBy === key && remote.sortDirection !== 'desc' ? 'desc' : 'asc'); return; }
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortKey(key); setSortDir('asc'); }
   };
@@ -200,7 +201,7 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
                   {col.sortable && col.label !== 'STT' ? (
                     <button onClick={() => handleSort(col.key)} className="flex items-center gap-1 hover:text-[var(--foreground)] transition-colors">
                       {col.label}
-                      {sortKey === col.key ? (sortDir === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5 opacity-30" />}
+                      {(remote?.onSort ? remote.sortBy : sortKey) === col.key ? ((remote?.onSort ? remote.sortDirection : sortDir) === 'asc' ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />) : <ChevronDown className="w-3.5 h-3.5 opacity-30" />}
                     </button>
                   ) : col.label}
                 </th>

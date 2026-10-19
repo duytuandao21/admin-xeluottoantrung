@@ -16,8 +16,8 @@ export function carToProduct(row: CarListRecord): Product {
     branchName: String(row.branch || ''), createdAt: String(row.createdAt || ''), updatedAt: String(row.updatedAt || ''), featured: Boolean(row.featured), installment: Boolean(row.installment), newArrival: Boolean(row.newArrival),
   };
 }
-export async function listCars(params: { page?: number; search?: string; brand?: string; model?: string; version?: string; status?: string }) {
-  return api<PageResult<CarListRecord>>(`/admin/cars${query({ ...params, limit: 10 })}`);
+export async function listCars(params: { page?: number; search?: string; brand?: string; model?: string; version?: string; status?: string; sortBy?: string; sortDirection?: 'asc' | 'desc' }, signal?: AbortSignal) {
+  return api<PageResult<CarListRecord>>(`/admin/cars${query({ ...params, limit: 10 })}`, { signal });
 }
 export async function carDetail(id: string) { return api<CarRecord & { media: { id: string; publicUrl: string; isCover: boolean; sortOrder: number }[] }>(`/admin/cars/${id}`); }
 export async function saveCar(form: Record<string, unknown>, id?: string) { return api<CarRecord>(id ? `/admin/cars/${id}` : '/admin/cars', json(id ? 'PATCH' : 'POST', form)); }

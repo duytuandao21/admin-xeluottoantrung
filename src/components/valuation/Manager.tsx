@@ -41,11 +41,19 @@ export default function ValuationManager() {
   useEffect(() => { const timer = setTimeout(() => setDebouncedSearch(search), 250); return () => clearTimeout(timer); }, [search]);
   useEffect(() => {
     if (!hasRead) return; let live = true;
-    Promise.all([api<CurrentOverview>(`${base}/current`), api<Catalog>(`${base}/catalog`)]).then(([info, list]) => {
-      if (!live) return; setOverview(info); setCatalog(list); setError('');
+    const controller = new AbortController();
+    api<CurrentOverview>(`${base}/current`, { signal: controller.signal }).then(info => {
+      if (!live) return; setOverview(info); setError('');
     }).catch(failure => { if (live) setError(failure instanceof Error ? failure.message : 'Không tải được cấu hình định giá.'); });
-    return () => { live = false; };
+    return () => { live = false; controller.abort(); };
   }, [hasRead, reload]);
+  useEffect(() => {
+    if (!hasRead) return;
+    const controller = new AbortController();
+    void api<Catalog>(`${base}/catalog`, { signal: controller.signal }).then(list => { if (!controller.signal.aborted) setCatalog(list); })
+      .catch(failure => { if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : 'Không tải được danh mục định giá.'); });
+    return () => controller.abort();
+  }, [hasRead]);
   const isRuleTab = tab in categoryLabels || ['condition', 'accident', 'mechanical', 'history'].includes(tab);
   const currentCategory = (tab in categoryLabels ? tab : category) as Category;
   const resource = tab === 'references' ? 'reference-prices' : tab === 'options' ? 'options' : tab === 'audit' ? 'audit' : isRuleTab ? 'rules' : '';

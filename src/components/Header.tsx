@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-import { api, type PageResult } from '@/lib/api/client';
+import { api } from '@/lib/api/client';
 import { menuItems } from '@/components/Sidebar';
 
 export default function Header() {
@@ -19,13 +19,15 @@ export default function Header() {
   const profile = { name: identity?.profile.fullName || 'Quản trị viên' };
   const [counts, setCounts] = useState({ sell: 0, trade_in: 0, callback: 0 });
   useEffect(() => {
-    let live = true;
-    const loadCounts = () => { void Promise.all((['sell', 'trade_in', 'callback'] as const).map(type => api<PageResult<unknown>>(`/admin/leads?type=${type}&status=unread&limit=1`)))
-      .then(([sell, trade, callback]) => { if (live) setCounts({ sell: sell.meta.total, trade_in: trade.meta.total, callback: callback.meta.total }); })
-      .catch(() => { if (live) setCounts({ sell: 0, trade_in: 0, callback: 0 }); }); };
+    let controller: AbortController | undefined;
+    const loadCounts = () => {
+      controller?.abort(); const current = new AbortController(); controller = current;
+      void api<typeof counts>('/admin/leads/counts', { signal: current.signal })
+        .then(next => { if (!current.signal.aborted) setCounts(next); }).catch(() => {});
+    };
     loadCounts();
     window.addEventListener('admin-leads-change', loadCounts);
-    return () => { live = false; window.removeEventListener('admin-leads-change', loadCounts); };
+    return () => { controller?.abort(); window.removeEventListener('admin-leads-change', loadCounts); };
   }, []);
   const notifRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);

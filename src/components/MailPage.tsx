@@ -1,6 +1,7 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { PageHeader, DataTable, StatusBadge, Modal, ConfirmDialog, Button } from '@/components/ui';
+import { useAdminList, useWriteAction } from '@/lib/api/use-admin-list';
 import { api, json, query, type PageResult } from '@/lib/api/client';
 import { CheckCircle, Phone, User, Calendar, Car } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8,36 +9,29 @@ import type { Mail } from '@/lib/types';
 import { formatDate } from '@/lib/date';
 
 function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string; subtitle: string }) {
-  const [mails, setMails] = useState<Mail[]>([]);
-  const [total, setTotal] = useState(0);
+  const write = useWriteAction();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [sort, setSort] = useState<{ sortBy?: string; sortDirection?: 'asc' | 'desc' }>({});
   const newsletter = type === 'dang-ky';
   const endpoint = newsletter ? '/admin/newsletter-subscribers' : '/admin/leads';
   const leadType = { 'ban-xe': 'sell', 'len-doi': 'trade_in', 'goi-lai': 'callback', 'dang-ky': '' }[type];
-  const reload = useCallback(async () => {
-    setLoading(true); setError('');
-    try {
-      const result = await api<PageResult<Record<string, unknown>>>(`${endpoint}${query({ page, limit: 10, search, type: leadType })}`);
-      setMails(result.data.map(row => ({ ...row, type, name: String(row.name || row.email || 'Khách hàng'), phone: String(row.phone || ''),
+  const { data: mails, meta, error, loading, reload } = useAdminList<Mail>(JSON.stringify([endpoint, page, search, leadType, sort]), async signal => {
+    const result = await api<PageResult<Record<string, unknown>>>(`${endpoint}${query({ page, limit: 10, search, type: leadType, ...sort })}`, { signal });
+    if (!signal.aborted && page > Math.max(1, result.meta.totalPages)) setPage(Math.max(1, result.meta.totalPages)); return { ...result, data: result.data.map(row => ({ ...row, type, name: String(row.name || row.email || 'Khách hàng'), phone: String(row.phone || ''),
         carName: String(row.carName || row.offeredModel || ''), currentCar: String(row.currentCar || [row.offeredBrand, row.offeredModel, row.offeredYear].filter(Boolean).join(' ')),
-        desiredCar: String(row.desiredCar || ''), status: String(row.status || 'active'), createdAt: String(row.createdAt || '') })) as Mail[]);
-      setTotal(result.meta.total);
-      window.dispatchEvent(new Event('admin-leads-change'));
-    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Không thể tải thư.'); setMails([]); }
-    finally { setLoading(false); }
-  }, [endpoint, page, search, leadType, type]);
-  useEffect(() => { queueMicrotask(() => void reload()); }, [reload]);
+        desiredCar: String(row.desiredCar || ''), status: String(row.status || 'active'), createdAt: String(row.createdAt || '') })) as Mail[] };
+  });
+  const total = meta.total;
+  const changed = () => { if (!newsletter) window.dispatchEvent(new Event('admin-leads-change')); };
   const [viewItem, setViewItem] = useState<Mail | null>(null);
   const [deleteItem, setDeleteItem] = useState<Mail | null>(null);
 
-  const markRead = async (mail: Mail) => {
+  const markRead = (mail: Mail) => write(async () => {
     if (newsletter) return;
-    try { await api(`${endpoint}/${mail.id}`, json('PATCH', { status: 'read' })); await reload(); toast.success('Đã đánh dấu đã đọc'); }
+    try { await api(`${endpoint}/${mail.id}`, json('PATCH', { status: 'read' })); changed(); await reload(); toast.success('Đã đánh dấu đã đọc'); }
     catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật.'); }
-  };
+  });
 
   const columns = [
     { key: 'id', label: 'STT', width: '60px', render: (item: Record<string, unknown>) => <span className="text-[var(--muted-fg)]">#{String(item.id)}</span> },
@@ -82,7 +76,7 @@ function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string
         subtitle={`${subtitle} • ${total} thư • ${unreadCount} chưa đọc trên trang`}
         actions={
           type === 'dang-ky' ? <Button variant="secondary" size="sm" onClick={exportEmails}>Xuất danh sách email</Button> :
-          <Button variant="secondary" size="sm" onClick={async () => { try { await Promise.all(mails.filter(m => m.status === 'unread').map(m => api(`${endpoint}/${m.id}`, json('PATCH', { status: 'read' })))); await reload(); toast.success('Đã đánh dấu các thư trên trang là đã đọc'); } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật.'); } }}><CheckCircle className="w-4 h-4" /> Đánh dấu tất cả đã đọc</Button>
+          <Button variant="secondary" size="sm" onClick={() => write(async () => { try { await Promise.all(mails.filter(m => m.status === 'unread').map(m => api(`${endpoint}/${m.id}`, json('PATCH', { status: 'read' })))); changed(); await reload(); toast.success('Đã đánh dấu các thư trên trang là đã đọc'); } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật.'); } })}><CheckCircle className="w-4 h-4" /> Đánh dấu tất cả đã đọc</Button>
         }
       />
 
@@ -91,7 +85,7 @@ function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string
         columns={columns}
         data={mails as unknown as Record<string, unknown>[]}
         emptyMessage={loading ? 'Đang tải dữ liệu...' : undefined}
-        remote={{ page, total, perPage: 10, search, onPage: setPage, onSearch: value => { setPage(1); setSearch(value); } }}
+        remote={{ ...sort, onSort: (sortBy, sortDirection) => { setPage(1); setSort({ sortBy, sortDirection }); }, page, total, perPage: 10, search, onPage: setPage, onSearch: value => { setPage(1); setSearch(value); } }}
         searchPlaceholder="Tìm kiếm theo tên, SĐT..."
         searchFields={['name', 'phone', 'email', 'carName', 'desiredCar']}
         onView={(item) => { const m = item as unknown as Mail; setViewItem(m); if (m.status === 'unread') void markRead(m); }}
@@ -126,12 +120,12 @@ function MailPage({ type, title, subtitle }: { type: Mail['type']; title: string
                 <p className="text-sm">{viewItem.content}</p>
               </div>
             )}
-            {!newsletter && viewItem.status !== 'replied' && <div className="flex justify-end"><Button type="button" onClick={async () => { try { await api(`${endpoint}/${viewItem.id}`, json('PATCH', { status: 'replied' })); setViewItem({ ...viewItem, status: 'replied' }); await reload(); toast.success('Đã đánh dấu đã liên hệ.'); } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật.'); } }}>Đánh dấu đã liên hệ</Button></div>}
+            {!newsletter && viewItem.status !== 'replied' && <div className="flex justify-end"><Button type="button" onClick={() => write(async () => { try { await api(`${endpoint}/${viewItem.id}`, json('PATCH', { status: 'replied' })); setViewItem({ ...viewItem, status: 'replied' }); changed(); await reload(); toast.success('Đã đánh dấu đã liên hệ.'); } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật.'); } })}>Đánh dấu đã liên hệ</Button></div>}
           </div>
         )}
       </Modal>
 
-      <ConfirmDialog open={!!deleteItem} onClose={() => setDeleteItem(null)} onConfirm={async () => { if (deleteItem) { try { await api(`${endpoint}/${deleteItem.id}`, json('DELETE')); toast.success('Đã xóa thư!'); setDeleteItem(null); await reload(); } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể xóa.'); } } }} message={`Xóa thư của "${deleteItem?.name}"?`} />
+      <ConfirmDialog open={!!deleteItem} onClose={() => setDeleteItem(null)} onConfirm={() => write(async () => { if (deleteItem) { try { await api(`${endpoint}/${deleteItem.id}`, json('DELETE')); toast.success('Đã xóa thư!'); setDeleteItem(null); changed(); await reload(); } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể xóa.'); } } })} message={`Xóa thư của "${deleteItem?.name}"?`} />
     </div>
   );
 }
