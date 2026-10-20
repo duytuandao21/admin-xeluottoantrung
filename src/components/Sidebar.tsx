@@ -27,7 +27,7 @@ interface MenuItem {
 
 export const menuItems: MenuItem[] = [
   { label: 'Tổng quan', href: '/', icon: LayoutDashboard },
-  { label: 'Thống kê', href: '/thong-ke', icon: BarChart3 },
+  { label: 'Thống kê', href: '/thong-ke', icon: BarChart3, permission: 'analytics.read' },
   {
     label: 'Sản phẩm', icon: Car, children: [
       { label: 'Danh sách xe', href: '/san-pham', icon: Car },
@@ -245,7 +245,7 @@ export default function Sidebar() {
 
       {/* Menu */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        {menuItems.map((item, i) => (
+        {menuItems.filter(item => !item.permission || identity?.permissions.includes(item.permission)).map((item, i) => (
           <SidebarMenuItem key={i} item={item.children ? { ...item, children: item.children.filter(child => !child.permission || identity?.permissions.includes(child.permission)) } : item} />
         ))}
       </nav>

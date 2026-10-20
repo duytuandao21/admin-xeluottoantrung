@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import type { Product, Category, CarAttribute, GearBox, Branch } from '@/lib/types';
 import ImageUpload from '@/components/ImageUpload';
 import PriceInput from '@/components/PriceInput';
+import LicensePlateInput from '@/components/LicensePlateInput';
+import { formatLicensePlate } from '@/lib/license-plate';
 import ProductThumbnail from '@/components/ProductThumbnail';
 import { formatDate } from '@/lib/date';
 import RichTextEditor, { RichTextContent } from '@/components/RichTextEditor';
@@ -141,7 +143,7 @@ export default function ProductsPage() {
       )
     },
     { key: 'price', label: 'Giá bán', sortable: true, render: (item: Product) => <span className="font-semibold tabular-nums text-red-600">{formatPrice(item.price)}</span> },
-    { key: 'mileage', label: 'Số km', sortable: true, render: (item: Product) => <span>{formatNumber(item.mileage)} km</span> },
+    { key: 'mileage', label: 'Số km', sortable: true, render: (item: Product) => <span>{item.mileage == null ? 'Chưa cập nhật' : `${formatNumber(item.mileage)} km`}</span> },
     { key: 'licensePlate', label: 'Biển số xe', render: (item: Product) => item.licensePlate || '—' },
     { key: 'status', label: 'Trạng thái', render: (item: Product) => {
       const badge = <StatusBadge status={item.status} labels={{ active: 'Đang bán', inactive: 'Ẩn', deposit: 'Đã nhận cọc', sold: 'Đã bán' }} />;
@@ -173,6 +175,7 @@ export default function ProductsPage() {
         color: managedColors.find(color => String(color.id) === detail.colorId)?.title || '',
         transmissionId: detail.transmissionId == null ? null : String(detail.transmissionId),
         transmission: gearboxes.find(row => String(row.id) === String(detail.transmissionId))?.name || '',
+        mileage: detail.mileage == null ? null : Number(detail.mileage),
         seatCount: detail.seatCount == null ? null : Number(detail.seatCount),
         condition: String(detail.condition || ''), licensePlate: String(detail.licensePlate || ''), description: String(detail.description || ''), fuel: String(detail.fuel || ''),
         createdAt: String(detail.createdAt || product.createdAt), newArrival: Boolean(detail.newArrival ?? product.newArrival),
@@ -189,6 +192,7 @@ export default function ProductsPage() {
         branchId: detail.branchId as number | undefined,
         color: managedColors.find(color => String(color.id) === detail.colorId)?.title || product.color,
         condition: String(detail.condition || ''), licensePlate: String(detail.licensePlate || ''),
+        mileage: detail.mileage == null ? null : Number(detail.mileage),
         seatCount: detail.seatCount == null ? null : Number(detail.seatCount),
         description: String(detail.description || ''), createdAt: String(detail.createdAt || product.createdAt),
         newArrival: Boolean(detail.newArrival ?? product.newArrival), updatedAt: String(detail.updatedAt || product.updatedAt) });
@@ -257,13 +261,14 @@ export default function ProductsPage() {
       toast.error(error instanceof Error ? error.message : 'Không thể lưu ảnh.');
       return;
     }
+    const mileageDigits = String(data.mileage || '').replace(/\D/g, '');
     const fields = {
       name: String(data.name).trim(), brandId: String(chosenBrand.id), modelId: String(chosenModel.id), versionId: String(chosenVersion.id),
       bodyStyleId: String(selectedBodyStyle?.id), year: Number(data.year), price: Number(String(data.price).replace(/\D/g, '')),
-      originalPrice: Number(String(data.originalPrice || '').replace(/\D/g, '')), mileage: Number(String(data.mileage || '').replace(/\D/g, '')),
+      originalPrice: Number(String(data.originalPrice || '').replace(/\D/g, '')), mileage: mileageDigits ? Number(mileageDigits) : null,
       transmissionId: String(chosenTransmission.id), seatCount, fuel: String(data.fuel), colorId: String(chosenColor.id),
       branchId: chosenBranch ? String(chosenBranch.id) : null,
-      licensePlate: String(data.licensePlate || ''), condition: String(data.condition || ''),
+      licensePlate: formatLicensePlate(String(data.licensePlate || '')), condition: String(data.condition || ''),
       status: String(data.status) as Product['status'], description: sanitizeRichText(String(data.description || '')),
       featured: form.has('featured'), installment: form.has('installment'),
       ...(editItem ? newArrivalUpdate(editItem.createdAt, Boolean(editItem.newArrival), form.has('newArrival')) : { newArrival: true }),
@@ -307,7 +312,7 @@ export default function ProductsPage() {
     const first = await listCars({ ...filters, page: 1 });
     const allCars = [...first.data];
     for (let next = 2; next <= first.meta.totalPages; next++) allCars.push(...(await listCars({ ...filters, page: next })).data);
-    const rows = [['ID', 'Tên xe', 'Hãng', 'Dòng xe', 'Phiên bản', 'Kiểu dáng', 'Chi nhánh', 'Năm', 'Giá bán', 'Số km', 'Trạng thái'], ...allCars.map(row => { const p = carToProduct(row); return [p.id, p.name, p.brand, p.model, p.version || '', String(row.bodyType || ''), p.branchName || '', p.year, p.price, p.mileage, p.status]; })];
+    const rows = [['ID', 'Tên xe', 'Hãng', 'Dòng xe', 'Phiên bản', 'Kiểu dáng', 'Chi nhánh', 'Năm', 'Giá bán', 'Số km', 'Trạng thái'], ...allCars.map(row => { const p = carToProduct(row); return [p.id, p.name, p.brand, p.model, p.version || '', String(row.bodyType || ''), p.branchName || '', p.year, p.price, p.mileage ?? 'Chưa cập nhật', p.status]; })];
     const csv = '\uFEFF' + rows.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
@@ -393,7 +398,7 @@ export default function ProductsPage() {
             </FormField>
             <FormField label="Giá cũ (VNĐ)"><PriceInput name="originalPrice" defaultValue={formData.originalPrice} /></FormField>
             <FormField label="Số km đã đi">
-              <PriceInput name="mileage" defaultValue={formData.mileage} placeholder="VD: 25.000" />
+              <PriceInput name="mileage" defaultValue={formData.mileage} placeholder="VD: 25.000" showZero />
             </FormField>
             <FormField label="Số chỗ ngồi" required>
               <Input name="seatCount" type="number" min={1} max={100} step={1} defaultValue={formData.seatCount ?? ''} required placeholder="VD: 5" />
@@ -430,7 +435,7 @@ export default function ProductsPage() {
               {!branches.some(branch => branch.status === 'active') && <p className="mt-2 text-sm text-[var(--muted-fg)]">Chưa có chi nhánh hoạt động. <Link href="/quan-ly/chi-nhanh" className="font-medium text-red-600 hover:underline">Quản lý chi nhánh</Link></p>}
             </FormField>
             <FormField label="Biển số">
-              <Input name="licensePlate" defaultValue={formData.licensePlate} placeholder="VD: 30A" />
+              <LicensePlateInput defaultValue={formData.licensePlate} />
             </FormField>
             <FormField label="Tình trạng xe"><Select name="condition" defaultValue={formData.condition || 'Đã qua sử dụng'}><option>Đã qua sử dụng</option><option>Xe mới</option></Select></FormField>
             <FormField label="Trạng thái"><Select name="status" defaultValue={formData.status || 'active'}><option value="active">Đang bán</option><option value="deposit">Đã nhận cọc</option><option value="sold">Đã bán</option><option value="inactive">Ẩn</option></Select></FormField>
@@ -478,7 +483,7 @@ export default function ProductsPage() {
                 ['Kiểu dáng', getProductBodyStyle(viewItem)],
                 ['Chi nhánh', getProductBranchName(viewItem)],
                 ['Giá bán', formatPrice(viewItem.price)],
-                ['Số km', `${formatNumber(viewItem.mileage)} km`],
+                ['Số km', viewItem.mileage == null ? 'Chưa cập nhật' : `${formatNumber(viewItem.mileage)} km`],
                 ['Số chỗ ngồi', viewItem.seatCount ? `${viewItem.seatCount} chỗ` : '—'],
                 ['Hộp số', viewItem.transmission],
                 ['Nhiên liệu', viewItem.fuel],

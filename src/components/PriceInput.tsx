@@ -3,8 +3,8 @@
 import { useRef, useState } from 'react';
 import { Input } from '@/components/ui';
 
-export default function PriceInput({ name, defaultValue, required = false, placeholder = 'VD: 890.000.000' }: { name: string; defaultValue?: number; required?: boolean; placeholder?: string }) {
-  const [value, setValue] = useState(defaultValue ? defaultValue.toLocaleString('vi-VN') : '');
+export default function PriceInput({ name, defaultValue, required = false, placeholder = 'VD: 890.000.000', showZero = false }: { name: string; defaultValue?: number | null; required?: boolean; placeholder?: string; showZero?: boolean }) {
+  const [value, setValue] = useState(defaultValue != null && (defaultValue !== 0 || showZero) ? defaultValue.toLocaleString('vi-VN') : '');
   const inputRef = useRef<HTMLInputElement>(null);
 
   return <Input ref={inputRef} name={name} type="text" inputMode="numeric" autoComplete="off" required={required} value={value} placeholder={placeholder} onChange={event => {

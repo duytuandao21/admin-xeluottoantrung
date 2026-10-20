@@ -10,8 +10,16 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ProductThumbnail from '@/components/ProductThumbnail';
 import { formatDate } from '@/lib/date';
+import { useAuth } from '@/lib/auth-context';
+import { getAnalytics, type CloudflareAnalytics } from '@/lib/api/analytics';
+import TrafficTrend from '@/components/analytics/TrafficTrend';
 
 export default function DashboardPage() {
+  const { identity } = useAuth();
+  const canReadAnalytics = Boolean(identity?.permissions.includes('analytics.read'));
+  const [trafficRange, setTrafficRange] = useState<string>();
+  const [trafficAttempt, setTrafficAttempt] = useState(0);
+  const [trafficResult, setTrafficResult] = useState<{ range?: string; attempt: number; data?: CloudflareAnalytics; error?: string }>();
   const [stats, setStats] = useState({ totalProducts: 0, totalMails: 0, totalCustomers: 0, recentMails: [] as MailRecord[], topProducts: [] as Product[] });
   const [error, setError] = useState('');
   useEffect(() => {
@@ -29,6 +37,23 @@ export default function DashboardPage() {
     return () => { live = false; };
   }, []);
 
+  useEffect(() => {
+    if (!canReadAnalytics) return;
+    const controller = new AbortController();
+    void getAnalytics(trafficRange, controller.signal)
+      .then(data => { if (!controller.signal.aborted) setTrafficResult({ range: trafficRange, attempt: trafficAttempt, data }); })
+      .catch(failure => { if (!controller.signal.aborted) setTrafficResult({ range: trafficRange, attempt: trafficAttempt,
+        error: failure instanceof Error ? failure.message : 'Không thể tải thống kê truy cập.' }); });
+    return () => controller.abort();
+  }, [canReadAnalytics, trafficRange, trafficAttempt]);
+  const currentTraffic = canReadAnalytics && trafficResult?.range === trafficRange && trafficResult?.attempt === trafficAttempt ? trafficResult : undefined;
+  const traffic = currentTraffic?.data;
+  const trafficLoading = canReadAnalytics && !currentTraffic;
+  const rangeLabel = traffic?.availableRanges.find(option => option.id === traffic.period.range)?.label;
+  const trafficMessage = !canReadAnalytics ? 'Bạn chưa được cấp quyền xem thống kê truy cập.'
+    : trafficLoading ? 'Đang tải thống kê truy cập…'
+      : currentTraffic?.error || traffic?.webAnalytics.reason || 'Chưa có dữ liệu lượt truy cập trong khoảng thời gian này.';
+
   return (
     <div className="space-y-6">
       <PageHeader title="Tổng quan" subtitle="Sản phẩm, thư và khách hàng cập nhật từ hệ thống" />
@@ -38,21 +63,35 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
         <StatsCard title="Tổng sản phẩm" value={stats.totalProducts} icon={<Car className="w-6 h-6" />} color="red" />
         <StatsCard title="Tổng thư mới" value={stats.totalMails} icon={<Mail className="w-6 h-6" />} color="amber" />
-        <StatsCard title="Lượt truy cập" value="—" icon={<Eye className="w-6 h-6" />} color="blue" />
+        <StatsCard title={`Lượt truy cập${rangeLabel ? ` (${rangeLabel})` : ''}`} value={trafficLoading ? '—' : traffic?.webAnalytics.visits ?? 'N/A'} icon={<Eye className="w-6 h-6" />} color="blue" />
         <StatsCard title="Khách hàng" value={stats.totalCustomers} icon={<Users className="w-6 h-6" />} color="green" />
       </div>
 
       {/* Chart + Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chart */}
-        <div className="lg:col-span-2 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-6">
+        <div className="lg:col-span-2 min-w-0 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-5" aria-busy={trafficLoading}>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div>
               <h3 className="font-semibold">Lượt truy cập</h3>
-              <p className="text-sm text-[var(--muted-fg)]">Chưa cấu hình nguồn phân tích truy cập</p>
+              <p className="text-sm text-[var(--muted-fg)]">{rangeLabel ? `${rangeLabel} · ` : ''}Lượt truy cập và lượt xem · Giờ Việt Nam</p>
             </div>
+            {canReadAnalytics && <div className="flex flex-wrap items-center gap-3 text-xs">
+              <label htmlFor="dashboard-traffic-range">Thời gian truy cập</label>
+              <select id="dashboard-traffic-range" className="rounded-lg border border-[var(--border-color)] bg-[var(--card-bg)] px-2 py-2" disabled={trafficLoading || !traffic?.availableRanges.length}
+                value={trafficRange || traffic?.period.range || ''} onChange={event => setTrafficRange(event.target.value)}>
+                {!traffic?.availableRanges.length && <option value="">Chưa khả dụng</option>}
+                {traffic?.availableRanges.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+              </select>
+              <button type="button" disabled={trafficLoading} onClick={() => setTrafficAttempt(value => value + 1)} className="underline disabled:opacity-50">Tải lại</button>
+              <Link href="/thong-ke" className="text-red-600 hover:text-red-700 font-medium flex items-center gap-1">Xem chi tiết <ArrowUpRight className="w-3 h-3" /></Link>
+            </div>}
           </div>
-          <div className="flex h-[280px] items-center justify-center text-sm text-[var(--muted-fg)]">Chưa có dữ liệu lượt truy cập</div>
+          <div className="h-[280px]">
+            {traffic?.webAnalytics.trend?.length
+              ? <TrafficTrend rows={traffic.webAnalytics.trend} bucket={traffic.webAnalytics.bucket} />
+              : <div role="status" className="flex h-full items-center justify-center text-center text-sm text-[var(--muted-fg)]">{trafficMessage}</div>}
+          </div>
         </div>
 
         {/* Recent Mails */}

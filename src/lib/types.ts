@@ -12,7 +12,7 @@ export interface Product {
   year: number;
   price: number;
   originalPrice?: number;
-  mileage: number;
+  mileage: number | null;
   seatCount?: number | null;
   transmission: string;
   transmissionId?: string | null;
