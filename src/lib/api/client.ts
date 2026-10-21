@@ -15,7 +15,7 @@ export function authClient(): SupabaseClient {
 }
 
 export class ApiError extends Error {
-  constructor(message: string, public status: number) { super(message); }
+  constructor(message: string, public status: number, public code?: string) { super(message); }
 }
 
 export async function api<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
@@ -43,7 +43,8 @@ export async function api<T>(path: string, options: RequestInit = {}, retry = tr
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     const detail = Array.isArray(body.message) ? body.message.join(', ') : body.message;
-    throw new ApiError(typeof detail === 'string' ? detail : `Yêu cầu thất bại (${response.status}).`, response.status);
+    const code = body.details?.code ?? body.code;
+    throw new ApiError(typeof detail === 'string' ? detail : `Yêu cầu thất bại (${response.status}).`, response.status, typeof code === 'string' ? code : undefined);
   }
   if (response.status === 204) return undefined as T;
   if (response.headers.get('content-type')?.includes('text/csv')) return response.text() as Promise<T>;

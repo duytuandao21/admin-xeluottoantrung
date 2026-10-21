@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { PageHeader, DataTable, StatusBadge, Modal, ConfirmDialog, FormField, Input, Select, Button, type Column } from '@/components/ui';
 import { formatPrice, formatNumber } from '@/lib/format';
 import { slugify } from '@/lib/slug';
-import { api, catalogueRows, json } from '@/lib/api/client';
+import { api, ApiError, catalogueRows, json } from '@/lib/api/client';
 import { useAdminList, useWriteAction } from '@/lib/api/use-admin-list';
 import { carDetail, carToProduct, deleteCar, listCars, saveCar, setCarPublished } from '@/lib/api/cars';
 import { uploadCarImage } from '@/lib/api/media';
@@ -24,6 +24,7 @@ import { resolveCarColorCode, type ManagedCarColor } from '@/lib/car-colors';
 import Link from 'next/link';
 import CarNewArrivalOption from '@/components/CarNewArrivalOption';
 import { newArrivalUpdate } from '@/lib/car-new-arrival';
+import DuplicateCarDialog from '@/components/DuplicateCarDialog';
 
 export default function ProductsPage() {
   const write = useWriteAction();
@@ -42,6 +43,8 @@ export default function ProductsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [duplicateCar, setDuplicateCar] = useState<{ name: string; slug: string; form: FormData } | null>(null);
   const changingStatusRef = useRef(false);
   const [changingStatusId, setChangingStatusId] = useState<string | null>(null);
   const [deleteItem, setDeleteItem] = useState<Product | null>(null);
@@ -205,13 +208,11 @@ export default function ProductsPage() {
     }
   });
 
-  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const saveForm = async (form: FormData, confirmDuplicateSlug = false) => {
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
     try {
-    const form = new FormData(e.currentTarget);
     const data = Object.fromEntries(form.entries());
     const chosenBrand = categories.find(category => category.name === String(data.brand) && (category.status === 'active' || category.name === editItem?.brand));
     const chosenModel = subCategories.find(category => category.parentId === chosenBrand?.id && category.name === String(data.model) && (category.status === 'active' || (editItem?.brand === chosenBrand?.name && editItem?.model === category.name)));
@@ -280,7 +281,7 @@ export default function ProductsPage() {
 
     let savedCarId: string | undefined;
     try {
-      const saved = await saveCar({ ...fields, ...(editItem ? {} : { slug: slugify(fields.name) }) }, editItem ? String(editItem.id) : undefined);
+      const saved = await saveCar({ ...fields, ...(!editItem && confirmDuplicateSlug ? { confirmDuplicateSlug: true } : {}) }, editItem ? String(editItem.id) : undefined);
       const carId = String(saved.id);
       savedCarId = carId;
       if (editItem) for (const url of currentImages.filter(url => !images.includes(url))) {
@@ -290,8 +291,13 @@ export default function ProductsPage() {
       for (const file of form.getAll('gallery')) if (file instanceof File && file.size) await uploadCarImage(carId, file);
       if (fields.status !== 'inactive') await api(`/admin/cars/${carId}/publish`, json('POST'));
       else if (editItem) await api(`/admin/cars/${carId}/unpublish`, json('POST'));
-      toast.success(editItem ? 'Đã cập nhật sản phẩm!' : 'Đã thêm sản phẩm mới!'); await reload();
+      toast.success(editItem ? 'Đã cập nhật sản phẩm!' : String(saved.slug) !== slugify(fields.name)
+        ? `Đã thêm xe mới với đường dẫn riêng: /${saved.slug}` : 'Đã thêm sản phẩm mới!'); await reload();
     } catch (failure) {
+      if (!editItem && !savedCarId && !confirmDuplicateSlug && failure instanceof ApiError && failure.status === 409 && failure.code === 'CAR_SLUG_CONFIRMATION_REQUIRED') {
+        setDuplicateCar({ name: fields.name, slug: slugify(fields.name), form });
+        return;
+      }
       toast.error(`${savedCarId ? 'Xe đã lưu nhưng thao tác ảnh hoặc xuất bản chưa hoàn tất. ' : ''}${failure instanceof Error ? failure.message : 'Không thể lưu sản phẩm.'}`);
       if (savedCarId) { await reload(); setEditItem(null); setShowAdd(false); }
       return;
@@ -302,6 +308,15 @@ export default function ProductsPage() {
       savingRef.current = false;
       setSaving(false);
     }
+  };
+
+  const handleSave = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void saveForm(new FormData(event.currentTarget));
+  };
+  const cancelDuplicate = () => {
+    setDuplicateCar(null);
+    requestAnimationFrame(() => { const name = formRef.current?.querySelector<HTMLInputElement>('input[name="name"]'); name?.focus(); name?.select(); });
   };
 
   const formModal = showAdd || editItem;
@@ -355,14 +370,15 @@ export default function ProductsPage() {
 
       {/* Add/Edit Modal */}
       <Modal open={!!formModal} onClose={() => { if (savingRef.current) return; setEditItem(null); setShowAdd(false); }} title={editItem ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới'} size="lg">
-        <form key={editItem?.id || 'new'} onSubmit={handleSave} className="space-y-8">
+        <form ref={formRef} key={editItem?.id || 'new'} onSubmit={handleSave} className="space-y-8">
           <div><h2 className="text-xl font-semibold">Thông tin xe</h2><p className="mt-1 text-sm text-[var(--muted-fg)]">Nhập thông tin cơ bản, giá bán và trạng thái của xe.</p></div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
             <FormField label="Tên xe" required>
-              <Input name="name" defaultValue={formData.name} onChange={event => setSlugPreview(slugify(event.currentTarget.value))} required placeholder="VD: Toyota Camry 2.5Q" />
+              <Input name="name" defaultValue={formData.name} onChange={event => { if (!editItem) setSlugPreview(slugify(event.currentTarget.value)); }} required placeholder="VD: Toyota Camry 2.5Q" />
             </FormField>
             <FormField label="Slug">
               <Input value={slugPreview} readOnly aria-label="Slug tự tạo" placeholder="Tự tạo từ tên xe" className="cursor-default bg-[var(--muted)] text-[var(--muted-fg)]" />
+              <p className="mt-2 text-sm text-[var(--muted-fg)]">{editItem ? 'Đường dẫn được giữ nguyên khi đổi tên xe.' : 'Đường dẫn dự kiến. Nếu trùng, bạn sẽ được hỏi trước khi hệ thống tạo đường dẫn riêng.'}</p>
             </FormField>
             <FormField label="Hãng xe" required>
               <Select name="brand" value={brand} onChange={event => { setBrand(event.target.value); setModel(''); setVersion(''); }} required>
@@ -464,6 +480,13 @@ export default function ProductsPage() {
           </div>
         </form>
       </Modal>
+
+      <DuplicateCarDialog car={duplicateCar} onCancel={cancelDuplicate} onConfirm={() => {
+        if (!duplicateCar || savingRef.current) return;
+        const pending = duplicateCar;
+        setDuplicateCar(null);
+        void saveForm(pending.form, true);
+      }} />
 
       {/* View Modal */}
       <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="Chi tiết sản phẩm" size="md">
