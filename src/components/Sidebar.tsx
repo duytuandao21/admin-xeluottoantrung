@@ -11,7 +11,7 @@ import {
   Palette, Phone, Share2, Smartphone, CreditCard,
   FileText, ArrowLeftRight, ListChecks, ShoppingCart, HandCoins,
   ImagePlus, Star, BookOpen, BarChart3, Search, ChevronDown,
-  Gauge, ClipboardCheck, ScanText, PanelBottom, BadgeCheck, UserCog, SlidersHorizontal, Factory, CarFront,
+  Gauge, ClipboardCheck, ScanText, PanelBottom, BadgeCheck, UserCog, SlidersHorizontal, Factory, CarFront, Monitor,
   type LucideIcon
 } from 'lucide-react';
 import { useState } from 'react';
@@ -28,6 +28,7 @@ interface MenuItem {
 export const menuItems: MenuItem[] = [
   { label: 'Tổng quan', href: '/', icon: LayoutDashboard },
   { label: 'Thống kê', href: '/thong-ke', icon: BarChart3, permission: 'analytics.read' },
+  { label: 'TV Display', href: '/tv-display', icon: Monitor, permission: 'content.read' },
   {
     label: 'Sản phẩm', icon: Car, children: [
       { label: 'Danh sách xe', href: '/san-pham', icon: Car },
@@ -69,7 +70,7 @@ export const menuItems: MenuItem[] = [
       { label: 'Tin tức', href: '/quan-ly/tin-tuc', icon: Newspaper },
       { label: 'Sự kiện / Khuyến mãi', href: '/quan-ly/khuyen-mai', icon: Calendar, permission: 'content.read' },
       { label: 'Kinh nghiệm sử dụng xe ô tô', href: '/quan-ly/kinh-nghiem-su-dung-xe', icon: BookOpen },
-      { label: 'Giới thiệu', href: '/quan-ly/gioi-thieu', icon: Info },
+      { label: 'Giới thiệu', href: '/quan-ly/gioi-thieu', icon: Info, permission: 'content.read' },
       { label: 'Cảm nhận KH', href: '/quan-ly/cam-nhan-khach-hang', icon: Heart },
       { label: 'Câu hỏi thường gặp', href: '/quan-ly/cau-hoi-thuong-gap', icon: HelpCircle },
       { label: 'Tuyển dụng', href: '/quan-ly/tuyen-dung', icon: Briefcase },

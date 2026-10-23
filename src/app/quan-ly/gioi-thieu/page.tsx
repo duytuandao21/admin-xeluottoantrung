@@ -1,3 +1,3 @@
-'use client';
-import LegacyCollectionPage from '@/components/LegacyCollectionPage';
-export default function GioiThieuPage() { return <LegacyCollectionPage />; }
+import AboutStoryManager from '@/components/about-story/AboutStoryManager';
+
+export default function GioiThieuPage() { return <AboutStoryManager />; }
