@@ -28,12 +28,18 @@ export default function AccessoriesPage() {
     <CrudPage
       title="Danh sách phụ kiện"
       subtitle="Quản lý sản phẩm phụ kiện ô tô"
+      stickyActions
+      generatedSlugPrefix="/phu-kien-o-to"
       columns={[
+        { key: 'rowNumber', label: 'STT', width: '60px' },
         { key: 'imageUrl', label: 'Ảnh', render: item => item.imageUrl
           ? <img src={String(item.imageUrl)} alt="" className="h-14 w-20 rounded-lg object-cover" /> : '—' },
         { key: 'name', label: 'Tên phụ kiện', render: item => <strong className="block max-w-[160px] truncate font-semibold sm:max-w-[240px]" title={String(item.name)}>{String(item.name)}</strong> },
-        { key: 'brand', label: 'Thương hiệu' },
-        { key: 'categoryId', label: 'Danh mục', render: item => categories.find(category => category.id === item.categoryId)?.name || 'Chưa phân loại' },
+        { key: 'brand', label: 'Thương hiệu', render: item => <span className="block max-w-[100px] truncate sm:max-w-[140px]" title={String(item.brand || '—')}>{String(item.brand || '—')}</span> },
+        { key: 'categoryId', label: 'Danh mục', render: item => {
+          const name = categories.find(category => category.id === item.categoryId)?.name || 'Chưa phân loại';
+          return <span className="block max-w-[100px] truncate sm:max-w-[140px]" title={name}>{name}</span>;
+        } },
         { key: 'price', label: 'Giá bán', render: item => `${formatNumber(Number(item.price))} đ` },
         { key: 'status', label: 'Trạng thái', render: item => <StatusBadge status={String(item.status)} /> },
       ]}

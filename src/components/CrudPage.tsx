@@ -41,10 +41,12 @@ interface CrudPageProps<T> {
   nameField?: string;
   storageKey?: string;
   statusToggle?: boolean;
+  stickyActions?: boolean;
+  generatedSlugPrefix?: string;
 }
 
 export default function CrudPage<T extends Record<string, unknown>>({
-  title, subtitle, columns, formFields, searchPlaceholder, searchFields, idField = 'id', nameField = 'name', storageKey, statusToggle = false
+  title, subtitle, columns, formFields, searchPlaceholder, searchFields, idField = 'id', nameField = 'name', storageKey, statusToggle = false, stickyActions = false, generatedSlugPrefix
 }: CrudPageProps<T>) {
   const pathname = usePathname();
   const route = storageKey || pathname;
@@ -58,6 +60,8 @@ export default function CrudPage<T extends Record<string, unknown>>({
   const [showAdd, setShowAdd] = useState(false);
   const [deleteItem, setDeleteItem] = useState<T | null>(null);
   const [slugPreview, setSlugPreview] = useState('');
+  const generatedSlugPreview = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(slugPreview)
+    ? `phu-kien-${slugPreview}` : slugPreview.slice(0, 80).replace(/-$/, '');
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const editableFields = formFields.filter(field => field.name !== 'order' && field.name !== idField);
@@ -181,6 +185,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
       {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error} <button type="button" className="underline" onClick={() => void reload()}>Thử lại</button></div>}
       <DataTable
         columns={listColumns as Column<T>[]}
+        stickyActions={stickyActions}
         data={data}
         emptyMessage={loading ? 'Đang tải dữ liệu...' : undefined}
         remote={{ ...sort, onSort: (sortBy, sortDirection) => { setPage(1); setSort({ sortBy, sortDirection }); }, page, total, perPage: 10, search, onPage: setPage, onSearch: value => { setPage(1); setSearch(value); } }}
@@ -220,10 +225,17 @@ export default function CrudPage<T extends Record<string, unknown>>({
                 ) : field.type === 'checkbox' ? (
                   <input name={field.name} type="checkbox" defaultChecked={Boolean(editItem ? editItem[field.name] : field.defaultValue)} className="h-4 w-4 accent-red-600" />
                 ) : (
-                  <><Input name={field.name} type={field.type || 'text'} defaultValue={editItem ? String(editItem[field.name] ?? '') : String(field.defaultValue ?? '')} placeholder={field.placeholder} required={field.required} min={field.name === 'rating' ? 1 : field.min} max={field.name === 'rating' ? 5 : field.max} step={field.name === 'rating' ? 1 : undefined} inputMode={field.type === 'tel' ? 'tel' : undefined} maxLength={field.type === 'tel' ? 20 : undefined} onChange={hasSlug && field.name === slugSourceField ? event => setSlugPreview(slugify(event.currentTarget.value)) : undefined} onBlur={field.type === 'tel' ? event => { event.currentTarget.value = normalizeVietnamesePhone(event.currentTarget.value); } : undefined} />{field.type === 'tel' && <p className="mt-2 text-sm text-[var(--muted-fg)]">Nhập số di động (03, 05, 07, 08, 09) hoặc số điện thoại bàn; chấp nhận +84.</p>}</>
+                  <><Input name={field.name} type={field.type || 'text'} defaultValue={editItem ? String(editItem[field.name] ?? '') : String(field.defaultValue ?? '')} placeholder={field.placeholder} required={field.required} min={field.name === 'rating' ? 1 : field.min} max={field.name === 'rating' ? 5 : field.max} step={field.name === 'rating' ? 1 : undefined} inputMode={field.type === 'tel' ? 'tel' : undefined} maxLength={field.type === 'tel' ? 20 : undefined} onChange={(hasSlug || generatedSlugPrefix) && field.name === slugSourceField ? event => setSlugPreview(slugify(event.currentTarget.value)) : undefined} onBlur={field.type === 'tel' ? event => { event.currentTarget.value = normalizeVietnamesePhone(event.currentTarget.value); } : undefined} />{field.type === 'tel' && <p className="mt-2 text-sm text-[var(--muted-fg)]">Nhập số di động (03, 05, 07, 08, 09) hoặc số điện thoại bàn; chấp nhận +84.</p>}</>
                 )}
               </FormField></div>
             ))}
+            {generatedSlugPrefix && <div className="lg:col-span-2"><FormField label={editItem ? 'Đường dẫn phụ kiện' : 'Đường dẫn dự kiến'}>
+              <Input readOnly aria-label="Đường dẫn phụ kiện" value={editItem
+                ? editItem.slug ? `${generatedSlugPrefix}/${String(editItem.slug)}` : ''
+                : generatedSlugPreview ? `${generatedSlugPrefix}/${generatedSlugPreview}` : ''}
+                placeholder="Được tạo tự động khi lưu" />
+              <p className="mt-2 text-sm text-[var(--muted-fg)]">{editItem ? 'Đường dẫn được giữ nguyên khi đổi tên phụ kiện.' : 'Hệ thống tự tạo khi lưu; nếu trùng sẽ thêm đuôi -2, -3…'}</p>
+            </FormField></div>}
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
             <Button type="button" variant="secondary" disabled={saving} onClick={() => { setEditItem(null); setShowAdd(false); }}>Hủy</Button>

@@ -7,10 +7,12 @@ export default function AccessoryBrandsPage() {
   return <CrudPage
     title="Thương hiệu phụ kiện"
     subtitle="Thương hiệu cũ được đưa vào đây; có thể thêm logo và thương hiệu mới"
+    stickyActions
     columns={[
+      { key: 'rowNumber', label: 'STT', width: '60px' },
       { key: 'imageUrl', label: 'Logo', render: item => item.imageUrl
         ? <img src={String(item.imageUrl)} alt="" className="h-12 w-16 rounded-lg bg-white object-contain" /> : '—' },
-      { key: 'name', label: 'Thương hiệu', render: item => <strong>{String(item.name)}</strong> },
+      { key: 'name', label: 'Thương hiệu', render: item => <strong className="block max-w-[160px] truncate font-semibold sm:max-w-[240px]" title={String(item.name)}>{String(item.name)}</strong> },
       { key: 'status', label: 'Trạng thái', render: item => <StatusBadge status={String(item.status)} /> },
     ]}
     formFields={[

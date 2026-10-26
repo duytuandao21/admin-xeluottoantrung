@@ -132,12 +132,13 @@ export interface DataTableProps<T = Record<string, unknown>> {
   searchPlaceholder?: string;
   searchFields?: string[];
   actions?: (item: T) => ReactNode;
+  stickyActions?: boolean;
   emptyMessage?: string;
   remote?: { page: number; total: number; perPage: number; search: string; onPage: (page: number) => void; onSearch: (search: string) => void; sortBy?: string; sortDirection?: 'asc' | 'desc'; onSort?: (key: string, direction: 'asc' | 'desc') => void };
 }
 
 export function DataTable<T extends Record<string, unknown> = Record<string, unknown>>({
-  columns, data, onEdit, onDelete, onView, searchPlaceholder, searchFields, actions, emptyMessage, remote
+  columns, data, onEdit, onDelete, onView, searchPlaceholder, searchFields, actions, stickyActions = false, emptyMessage, remote
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('');
@@ -207,7 +208,7 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
                 </th>
               ))}
               {(onEdit || onDelete || onView || actions) && (
-                <th className="whitespace-nowrap px-3 py-3.5 text-right text-sm font-semibold text-[var(--muted-fg)] uppercase tracking-wide w-32">Hành động</th>
+                <th className={`whitespace-nowrap px-3 py-3.5 text-right text-sm font-semibold text-[var(--muted-fg)] uppercase tracking-wide w-32${stickyActions ? ' sticky right-0 z-10 border-l border-[var(--border-color)] bg-[var(--card-bg)]' : ''}`}>Hành động</th>
               )}
             </tr>
           </thead>
@@ -220,14 +221,14 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
               </tr>
             ) : (
               paginated.map((item, i) => (
-                <tr key={i} className="border-b border-[var(--border-color)] last:border-0">
+                <tr key={i} className="group border-b border-[var(--border-color)] last:border-0">
                   {columns.map(col => (
                     <td key={col.key} className="whitespace-nowrap px-3 py-3.5 text-[15px]">
                       {col.label === 'STT' ? (currentPage - 1) * perPage + i + 1 : col.render ? col.render(item) : ['createdAt', 'updatedAt', 'deadline', 'lastLogin'].includes(col.key) ? formatDate(String(item[col.key] ?? '')) : String(item[col.key] ?? '')}
                     </td>
                   ))}
                   {(onEdit || onDelete || onView || actions) && (
-                    <td className="whitespace-nowrap px-3 py-3.5 text-right">
+                    <td className={`whitespace-nowrap px-3 py-3.5 text-right${stickyActions ? ' sticky right-0 z-10 border-l border-[var(--border-color)] bg-[var(--card-bg)] group-hover:bg-[var(--card-hover)] transition-colors' : ''}`}>
                       <div className="flex items-center justify-end gap-1">
                         {actions ? actions(item) : (
                           <>
