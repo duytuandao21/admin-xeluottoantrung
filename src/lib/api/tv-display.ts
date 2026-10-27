@@ -1,11 +1,14 @@
 import { api, json } from './client';
+import { defaultTVAnniversary, parseTVAnniversary, type TVAnniversarySettings } from '../tv-anniversary-settings';
 
 export type TVHotline = { name: string; phone: string };
 export type TVConfig = {
+  theme: 'standard' | 'anniversary-4';
+  anniversary: TVAnniversarySettings;
   logoUrl: string; title: string; hotlineTitle: string; carIntervalSeconds: number;
   hotlineIntervalSeconds: number; syncSalesContacts: boolean; hotlines: TVHotline[];
 };
-export const defaultTVConfig: TVConfig = { logoUrl: '', title: 'Bảng giá xe đang bán', hotlineTitle: 'Hotline',
+export const defaultTVConfig: TVConfig = { theme: 'standard', anniversary: defaultTVAnniversary, logoUrl: '', title: 'Bảng giá xe đang bán', hotlineTitle: 'Hotline',
   carIntervalSeconds: 15, hotlineIntervalSeconds: 5, syncSalesContacts: true, hotlines: [] };
 export async function loadTVDisplay() {
   const [rows, contacts, logos] = await Promise.all([
@@ -14,8 +17,10 @@ export async function loadTVDisplay() {
     api<{key:string;value:string}[]>('/admin/site-settings/thiet-lap-logo'),
   ]);
   const saved = rows.find(row => row.key === 'config')?.value;
-  const config: TVConfig = saved ? JSON.parse(saved) : { ...defaultTVConfig, hotlines: [] };
+  const config: TVConfig = saved ? { theme: 'standard', ...JSON.parse(saved) } : { ...defaultTVConfig, hotlines: [] };
   if (!config || !Array.isArray(config.hotlines) || typeof config.syncSalesContacts !== 'boolean') throw new Error('Cấu hình TV Display không hợp lệ.');
+  if (config.theme !== 'standard' && config.theme !== 'anniversary-4') throw new Error('Giao diện TV Display không hợp lệ.');
+  config.anniversary = parseTVAnniversary(config.anniversary);
   const seen = new Set<string>();
   const sales = contacts.filter(row => row.status === 'active' &&
     /tu\s*van\s*ban\s*hang/.test((row.body || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()))

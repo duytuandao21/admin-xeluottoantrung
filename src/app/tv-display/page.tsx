@@ -8,6 +8,8 @@ import ImageUpload from '@/components/ImageUpload';
 import { useAuth } from '@/lib/auth-context';
 import { loadTVDisplay, saveTVDisplay, type TVConfig, type TVHotline } from '@/lib/api/tv-display';
 import { uploadAsset } from '@/lib/api/media';
+import TVAnniversaryEditor from './TVAnniversaryEditor';
+import { parseTVAnniversary } from '@/lib/tv-anniversary-settings';
 
 const panel = 'rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-5 sm:p-6';
 const muted = 'text-sm text-[var(--muted-fg)]';
@@ -23,7 +25,7 @@ export default function TVDisplayPage() {
   const [busy, setBusy] = useState(false);
   const [imageKey, setImageKey] = useState(0);
   const [saved, setSaved] = useState('');
-  const uploaded = useRef<{ signature: string; url: string } | null>(null);
+  const uploaded = useRef(new Map<string, { signature: string; url: string }>());
   const load = useCallback(async () => {
     const data = await loadTVDisplay();
     setConfig(data.config); setSales(data.sales); setWebsiteLogo(data.websiteLogo);
@@ -63,14 +65,20 @@ export default function TVDisplayPage() {
     }
     setBusy(true);
     try {
-      const file = form.get('logo');
-      if (file instanceof File && file.size) {
-        const signature = `${file.name}:${file.size}:${file.lastModified}:${file.type}`;
-        if (uploaded.current?.signature !== signature) uploaded.current = { signature, url: await uploadAsset(file) };
-        next.logoUrl = uploaded.current.url;
-      } else if (form.has('logo__remove')) next.logoUrl = '';
+      next.anniversary = parseTVAnniversary(next.anniversary);
+      const imageValue = async (name: string, current: string) => {
+        const file = form.get(name);
+        if (file instanceof File && file.size) {
+          const signature = `${file.name}:${file.size}:${file.lastModified}:${file.type}`;
+          if (uploaded.current.get(name)?.signature !== signature) uploaded.current.set(name,{signature,url:await uploadAsset(file)});
+          return uploaded.current.get(name)!.url;
+        }
+        return form.has(`${name}__remove`) ? '' : current;
+      };
+      next.logoUrl = await imageValue('logo',next.logoUrl);
+      for (const slide of next.anniversary.slides) slide.imageUrl = await imageValue(`anniversary-image-${slide.id}`,slide.imageUrl);
       await saveTVDisplay(next);
-      setConfig(next); setSaved(JSON.stringify(next)); setImageKey(value => value + 1); uploaded.current = null;
+      setConfig(next); setSaved(JSON.stringify(next)); setImageKey(value => value + 1); uploaded.current.clear();
       toast.success('Đã lưu TV Display. Màn hình TV nhận cấu hình trong lần cập nhật kế tiếp.');
     } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể lưu. Nội dung đang nhập được giữ lại.'); }
     finally { setBusy(false); }
@@ -91,6 +99,23 @@ export default function TVDisplayPage() {
     {!canWrite && <p className={muted}>Bạn có quyền xem; cần quyền chỉnh sửa nội dung để lưu thay đổi.</p>}
     <form id="tv-display-form" onSubmit={save}>
       <fieldset disabled={busy || !canWrite} className="min-w-0 space-y-6">
+        <section className={`${panel} space-y-4`} aria-labelledby="tv-theme-title">
+          <h2 id="tv-theme-title" className="text-lg font-semibold">Giao diện trình chiếu</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {([
+              { value: 'standard', title: 'Bình thường', description: 'Giữ nguyên mẫu TV hiện tại, không có khung sự kiện.' },
+              { value: 'anniversary-4', title: 'Kỷ niệm 4 năm · 2022–2026', description: 'Khung lụa đỏ, viền vàng và huy hiệu kỷ niệm. Giữ nguyên vùng hiển thị xe.' },
+            ] as const).map(theme => <label key={theme.value} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${config.theme === theme.value ? 'border-red-500 bg-red-500/5' : 'border-[var(--border-color)] bg-[var(--card-bg)]'}`}>
+              <input type="radio" name="tv-theme" value={theme.value} checked={config.theme === theme.value}
+                onChange={() => update({ theme: theme.value })} className="mt-1 h-4 w-4 shrink-0 accent-red-600"/>
+              <span><span className="block font-semibold">{theme.title}</span><span className={`mt-1 block ${muted}`}>{theme.description}</span></span>
+            </label>)}
+          </div>
+          <p className={muted}>Hết sự kiện, chọn “Bình thường” rồi “Lưu thay đổi” để trở về mẫu cũ. Không cần triển khai lại website.</p>
+        </section>
+        <fieldset hidden={config.theme !== 'anniversary-4'} disabled={config.theme !== 'anniversary-4'} className="min-w-0">
+          <TVAnniversaryEditor value={config.anniversary} onChange={anniversary=>update({anniversary})} imageKey={imageKey}/>
+        </fieldset>
         <div className="grid gap-6 xl:grid-cols-3">
           <section className={`${panel} space-y-5 xl:col-span-2`}>
             <h2 className="flex items-center gap-2 text-lg font-semibold"><Monitor size={20} className="text-red-500"/>Nội dung hiển thị</h2>
