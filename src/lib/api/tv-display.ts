@@ -1,14 +1,16 @@
 import { api, json } from './client';
+import { defaultTVMusic, parseTVMusic, type TVMusicSettings } from '../tv-music-settings';
 import { defaultTVAnniversary, parseTVAnniversary, type TVAnniversarySettings } from '../tv-anniversary-settings';
 
 export type TVHotline = { name: string; phone: string };
 export type TVConfig = {
+  music: TVMusicSettings;
   theme: 'standard' | 'anniversary-4';
   anniversary: TVAnniversarySettings;
   logoUrl: string; title: string; hotlineTitle: string; carIntervalSeconds: number;
   hotlineIntervalSeconds: number; syncSalesContacts: boolean; hotlines: TVHotline[];
 };
-export const defaultTVConfig: TVConfig = { theme: 'standard', anniversary: defaultTVAnniversary, logoUrl: '', title: 'Bảng giá xe đang bán', hotlineTitle: 'Hotline',
+export const defaultTVConfig: TVConfig = { music: defaultTVMusic, theme: 'standard', anniversary: defaultTVAnniversary, logoUrl: '', title: 'Bảng giá xe đang bán', hotlineTitle: 'Hotline',
   carIntervalSeconds: 15, hotlineIntervalSeconds: 5, syncSalesContacts: true, hotlines: [] };
 export async function loadTVDisplay() {
   const [rows, contacts, logos] = await Promise.all([
@@ -21,6 +23,7 @@ export async function loadTVDisplay() {
   if (!config || !Array.isArray(config.hotlines) || typeof config.syncSalesContacts !== 'boolean') throw new Error('Cấu hình TV Display không hợp lệ.');
   if (config.theme !== 'standard' && config.theme !== 'anniversary-4') throw new Error('Giao diện TV Display không hợp lệ.');
   config.anniversary = parseTVAnniversary(config.anniversary);
+  config.music = parseTVMusic(config.music);
   const seen = new Set<string>();
   const sales = contacts.filter(row => row.status === 'active' &&
     /tu\s*van\s*ban\s*hang/.test((row.body || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()))
@@ -33,5 +36,5 @@ export async function loadTVDisplay() {
   return { config, sales, websiteLogo: logos.find(row => row.key === 'logo')?.value || '' };
 }
 export function saveTVDisplay(config: TVConfig) {
-  return api('/admin/site-settings/tv-display/config', json('PUT', { value: JSON.stringify(config), valueType: 'json' }));
+  return api<{ value: string }>('/admin/site-settings/tv-display/config', json('PUT', { value: JSON.stringify(config), valueType: 'json' }));
 }

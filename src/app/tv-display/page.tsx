@@ -10,6 +10,8 @@ import { loadTVDisplay, saveTVDisplay, type TVConfig, type TVHotline } from '@/l
 import { uploadAsset } from '@/lib/api/media';
 import TVAnniversaryEditor from './TVAnniversaryEditor';
 import { parseTVAnniversary } from '@/lib/tv-anniversary-settings';
+import TVMusicEditor from './TVMusicEditor';
+import { defaultTVMusic, parseTVMusic } from '@/lib/tv-music-settings';
 
 const panel = 'rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] p-5 sm:p-6';
 const muted = 'text-sm text-[var(--muted-fg)]';
@@ -23,6 +25,7 @@ export default function TVDisplayPage() {
   const [websiteLogo, setWebsiteLogo] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [musicBusy, setMusicBusy] = useState(false);
   const [imageKey, setImageKey] = useState(0);
   const [saved, setSaved] = useState('');
   const uploaded = useRef(new Map<string, { signature: string; url: string }>());
@@ -50,7 +53,7 @@ export default function TVDisplayPage() {
   const update = (patch: Partial<TVConfig>) => setConfig(previous => previous ? { ...previous, ...patch } : previous);
   const save = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!config || !canWrite || busy) return;
+    if (!config || !canWrite || busy || musicBusy) return;
     const form = new FormData(event.currentTarget);
     const next = { ...config, title: config.title.trim(), hotlineTitle: config.hotlineTitle.trim(),
       hotlines: config.syncSalesContacts ? [] : config.hotlines.map(row => ({ name: row.name.trim(), phone: row.phone.replace(/[\s().-]/g, '') })) };
@@ -77,8 +80,12 @@ export default function TVDisplayPage() {
       };
       next.logoUrl = await imageValue('logo',next.logoUrl);
       for (const slide of next.anniversary.slides) slide.imageUrl = await imageValue(`anniversary-image-${slide.id}`,slide.imageUrl);
-      await saveTVDisplay(next);
-      setConfig(next); setSaved(JSON.stringify(next)); setImageKey(value => value + 1); uploaded.current.clear();
+      next.music = parseTVMusic(next.music);
+      if (JSON.stringify(next).length > 20_000) throw new Error('Tổng cấu hình TV vượt 20.000 ký tự. Vui lòng rút gọn tên hoặc nội dung.');
+      const result = await saveTVDisplay(next);
+      const canonical = { ...next, ...JSON.parse(result.value) } as TVConfig;
+      canonical.music = parseTVMusic(canonical.music);
+      setConfig(canonical); setSaved(JSON.stringify(canonical)); setImageKey(value => value + 1); uploaded.current.clear();
       toast.success('Đã lưu TV Display. Màn hình TV nhận cấu hình trong lần cập nhật kế tiếp.');
     } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể lưu. Nội dung đang nhập được giữ lại.'); }
     finally { setBusy(false); }
@@ -95,10 +102,13 @@ export default function TVDisplayPage() {
   };
   return <div className="space-y-6">
     <PageHeader title="TV Display" subtitle="Quản lý bảng giá và hotline trình chiếu tại cửa hàng." actions={
-      canWrite && <Button type="submit" form="tv-display-form" disabled={busy}><Save size={17}/>{busy ? 'Đang lưu…' : 'Lưu thay đổi'}</Button>}/>
+      canWrite && <Button type="submit" form="tv-display-form" disabled={busy || musicBusy}><Save size={17}/>{busy ? 'Đang lưu…' : 'Lưu thay đổi'}</Button>}/>
     {!canWrite && <p className={muted}>Bạn có quyền xem; cần quyền chỉnh sửa nội dung để lưu thay đổi.</p>}
     <form id="tv-display-form" onSubmit={save}>
       <fieldset disabled={busy || !canWrite} className="min-w-0 space-y-6">
+        <TVMusicEditor value={config.music} saved={saved ? parseTVMusic(JSON.parse(saved).music) : defaultTVMusic} disabled={busy || !canWrite}
+          onChange={music => update({ music })} onBusy={setMusicBusy}
+          onPersistedChange={music => setSaved(previous => JSON.stringify({ ...JSON.parse(previous), music }))}/>
         <section className={`${panel} space-y-4`} aria-labelledby="tv-theme-title">
           <h2 id="tv-theme-title" className="text-lg font-semibold">Giao diện trình chiếu</h2>
           <div className="grid gap-4 md:grid-cols-2">
