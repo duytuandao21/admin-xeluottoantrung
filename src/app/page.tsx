@@ -147,7 +147,7 @@ export default function DashboardPage() {
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
                       <ProductThumbnail images={product.images} size="sm" />
-                      <span className="text-sm font-medium">{product.name}</span>
+                      <span className="admin-list-text text-sm font-medium" title={product.name}>{product.name}</span>
                     </div>
                   </td>
                   <td className="py-3 px-4 text-sm">{product.brand}</td>

@@ -11,7 +11,7 @@ export default function WebsiteContentPage({ policy = false }: { policy?: boolea
       ...(!policy ? [{ key: 'image', label: 'Hình', render: (item: Record<string, unknown>) => item.image ? <img src={String(item.image)} alt="" className="h-12 w-12 rounded-lg object-contain" /> : '—' }] : []),
       { key: 'title', label: 'Tiêu đề', sortable: true },
       { key: 'description', label: 'Nội dung', render: item => <span className="block max-w-xs truncate text-sm text-[var(--muted-fg)]">{richTextPreview(String(item.description || ''))}</span> },
-      ...(policy ? [{ key: 'key', label: 'Trang trên website', render: (item: Record<string, unknown>) => <span className="text-sm">/{String(item.key)}</span> }] : []),
+      ...(policy ? [{ key: 'key', label: 'Trang trên website', render: (item: Record<string, unknown>) => <span className="admin-list-text text-sm" title={`/${String(item.key)}`}>/{String(item.key)}</span> }] : []),
       { key: 'status', label: 'Hiển thị' },
     ]}
     formFields={[

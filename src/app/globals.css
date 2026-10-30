@@ -164,6 +164,19 @@ body {
 }
 
 /* Table styles */
+.admin-list-text {
+  display: block;
+  min-width: 0;
+  max-width: 20rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 639px) {
+  .admin-list-text { max-width: 12rem; }
+}
+
 .data-table tbody tr {
   transition: background-color 0.15s ease;
 }

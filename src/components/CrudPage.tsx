@@ -4,10 +4,11 @@ import { useRef, useState, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { slugify } from '@/lib/slug';
 import { useAdminList } from '@/lib/api/use-admin-list';
-import { deleteResource, listResource, resourceDetail, saveResource } from '@/lib/api/resources';
+import { deleteResource, displayOrderPath, listResource, resourceDetail, saveResource } from '@/lib/api/resources';
+import DisplayOrderEditor from '@/components/DisplayOrderEditor';
 import { uploadAsset } from '@/lib/api/media';
 import { PageHeader, DataTable, Modal, ConfirmDialog, FormField, Input, Textarea, Select, Button, type Column } from '@/components/ui';
-import { Plus } from 'lucide-react';
+import { ListOrdered, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import ImageUpload from '@/components/ImageUpload';
 import PriceInput from '@/components/PriceInput';
@@ -40,7 +41,7 @@ interface CrudPageProps<T> {
   idField?: string;
   nameField?: string;
   storageKey?: string;
-  statusToggle?: boolean;
+  statusToggle?: boolean | { visible: 'published'; hidden: 'draft' };
   stickyActions?: boolean;
   generatedSlugPrefix?: string;
 }
@@ -50,6 +51,8 @@ export default function CrudPage<T extends Record<string, unknown>>({
 }: CrudPageProps<T>) {
   const pathname = usePathname();
   const route = storageKey || pathname;
+  const orderPath = displayOrderPath(route);
+  const [ordering, setOrdering] = useState(false);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<{ sortBy?: string; sortDirection?: 'asc' | 'desc' }>({});
@@ -64,6 +67,8 @@ export default function CrudPage<T extends Record<string, unknown>>({
     ? `phu-kien-${slugPreview}` : slugPreview.slice(0, 80).replace(/-$/, '');
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
+  const [visibilitySavingId, setVisibilitySavingId] = useState<string | null>(null);
+  const visibilityStates = typeof statusToggle === 'object' ? statusToggle : { visible: 'active', hidden: 'inactive' };
   const editableFields = formFields.filter(field => field.name !== 'order' && field.name !== idField);
   const hasSlug = editableFields.some(field => field.name === 'slug');
   const slugSourceField = editableFields.some(field => field.name === nameField) ? nameField : 'title';
@@ -162,15 +167,20 @@ export default function CrudPage<T extends Record<string, unknown>>({
     finally { actionRef.current = false; }
   };
   const toggleStatus = async (item: T) => {
-    if (actionRef.current) return;
+    if (actionRef.current || loading || ![visibilityStates.visible, visibilityStates.hidden].includes(String(item.status))) return;
     actionRef.current = true;
-    try { await saveResource(route, { status: item.status === 'active' ? 'inactive' : 'active' }, item); await reload(); }
+    setVisibilitySavingId(String(item[idField]));
+    try { await saveResource(route, { status: item.status === visibilityStates.visible ? visibilityStates.hidden : visibilityStates.visible }, item); }
     catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Không thể cập nhật hiển thị.'); }
-    finally { actionRef.current = false; }
+    finally {
+      // Read persisted state even when a committed write lost its response.
+      try { await reload(); }
+      finally { actionRef.current = false; setVisibilitySavingId(null); }
+    }
   };
   const listColumns = columns.filter(column => column.key !== 'order' || column.label === 'STT').map(column => statusToggle && column.key === 'status' ? {
     ...column,
-    render: (item: T) => <button type="button" role="switch" aria-checked={item.status === 'active'} aria-label={`Hiển thị ${String(item.title || item.name || item[nameField] || '')}`} onClick={() => void toggleStatus(item)} className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 ${item.status === 'active' ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-600'}`}><span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${item.status === 'active' ? 'translate-x-6' : 'translate-x-1'}`} /></button>,
+    render: (item: T) => <button type="button" role="switch" aria-checked={item.status === visibilityStates.visible} aria-label={`Hiển thị ${String(item.title || item.name || item[nameField] || '')}`} title={item.status === visibilityStates.visible ? 'Bấm để ẩn' : 'Bấm để hiển thị'} disabled={loading || visibilitySavingId !== null || ![visibilityStates.visible, visibilityStates.hidden].includes(String(item.status))} aria-busy={visibilitySavingId === String(item[idField])} onClick={() => void toggleStatus(item)} className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-wait disabled:opacity-60 ${item.status === visibilityStates.visible ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-600'}`}><span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${item.status === visibilityStates.visible ? 'translate-x-6' : 'translate-x-1'}`} /></button>,
   } : ['featured', 'installment'].includes(column.key) ? {
     ...column,
     render: (item: T) => <button type="button" role="switch" aria-checked={Boolean(item[column.key])} aria-label={`${column.label}: ${Boolean(item[column.key]) ? 'Bật' : 'Tắt'}`} onClick={() => toggleBoolean(item, column.key)} className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${item[column.key] ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-600'}`}><span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${item[column.key] ? 'translate-x-6' : 'translate-x-1'}`} /></button>,
@@ -183,7 +193,11 @@ export default function CrudPage<T extends Record<string, unknown>>({
       } />
 
       {error && <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-700">{error} <button type="button" className="underline" onClick={() => void reload()}>Thử lại</button></div>}
-      <DataTable
+      {orderPath && !ordering && <div className="flex justify-end">
+        <Button size="sm" variant="secondary" onClick={() => setOrdering(true)}><ListOrdered className="h-4 w-4" /> Sắp xếp hiển thị</Button>
+      </div>}
+      {ordering && orderPath && <DisplayOrderEditor path={orderPath} title={title} onClose={() => setOrdering(false)} onSaved={reload} />}
+      {!ordering && <DataTable
         columns={listColumns as Column<T>[]}
         stickyActions={stickyActions}
         data={data}
@@ -193,7 +207,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
         searchFields={searchFields}
         onEdit={item => { const revision = ++detailRevision.current; void resourceDetail(route, item).then(detail => { if (revision !== detailRevision.current) return; setSlugPreview(slugify(String(detail[slugSourceField] || ''))); setEditItem(detail as T); }).catch(failure => { if (revision === detailRevision.current) toast.error(failure instanceof Error ? failure.message : 'Không thể tải dữ liệu.'); }); }}
         onDelete={(item) => setDeleteItem(item as T)}
-      /></>}
+      />}</>}
 
       <Modal open={isOpen} onClose={() => { if (savingRef.current) return; detailRevision.current++; setEditItem(null); setShowAdd(false); }} title={editItem ? `Sửa ${title.toLowerCase()}` : `Thêm ${title.toLowerCase()}`} size="md">
         <form key={editItem ? String(editItem[idField]) : 'new'} onSubmit={handleSave} className="space-y-7">
@@ -223,7 +237,7 @@ export default function CrudPage<T extends Record<string, unknown>>({
                 ) : field.name === 'slug' ? (
                   <Input value={slugPreview} readOnly aria-label="Slug tự tạo" placeholder="Tự tạo từ tên hoặc tiêu đề" className="cursor-default bg-[var(--muted)] text-[var(--muted-fg)]" />
                 ) : field.type === 'checkbox' ? (
-                  <input name={field.name} type="checkbox" defaultChecked={Boolean(editItem ? editItem[field.name] : field.defaultValue)} className="h-4 w-4 accent-red-600" />
+                  <><input name={field.name} type="checkbox" defaultChecked={Boolean(editItem ? editItem[field.name] : field.defaultValue)} className="h-4 w-4 accent-red-600" />{field.hint && <p className="mt-2 text-sm text-[var(--muted-fg)]">{field.hint}</p>}</>
                 ) : (
                   <><Input name={field.name} type={field.type || 'text'} defaultValue={editItem ? String(editItem[field.name] ?? '') : String(field.defaultValue ?? '')} placeholder={field.placeholder} required={field.required} min={field.name === 'rating' ? 1 : field.min} max={field.name === 'rating' ? 5 : field.max} step={field.name === 'rating' ? 1 : undefined} inputMode={field.type === 'tel' ? 'tel' : undefined} maxLength={field.type === 'tel' ? 20 : undefined} onChange={(hasSlug || generatedSlugPrefix) && field.name === slugSourceField ? event => setSlugPreview(slugify(event.currentTarget.value)) : undefined} onBlur={field.type === 'tel' ? event => { event.currentTarget.value = normalizeVietnamesePhone(event.currentTarget.value); } : undefined} />{field.type === 'tel' && <p className="mt-2 text-sm text-[var(--muted-fg)]">Nhập số di động (03, 05, 07, 08, 09) hoặc số điện thoại bàn; chấp nhận +84.</p>}</>
                 )}

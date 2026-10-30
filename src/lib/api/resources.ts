@@ -40,6 +40,13 @@ const entryRoutes = ['/quan-ly/gioi-thieu', '/thiet-lap/banner-dong-xe', '/thiet
 for (const route of entryRoutes) resources[route] = entry(route.slice(1).replaceAll('/', '-'));
 
 export function resourceFor(route: string): Resource { const resource = resources[route]; if (!resource) throw new Error(`Chưa có API cho màn ${route}`); return resource; }
+const orderableCollections = new Set(['faqs', 'testimonials', 'services', 'slides', 'accessories', 'accessory-brands', 'accessory-categories']);
+export function displayOrderPath(route: string): string | null {
+  const resource = resourceFor(route);
+  if (resource.kind === 'entry') return `${resource.path}/order/${resource.group}`;
+  if (resource.kind === 'collection' && orderableCollections.has(resource.path.split('/').at(-1) || '')) return `${resource.path}/order`;
+  return null;
+}
 function isArticleCollection(resource: Resource) { return resource.path.endsWith('/articles') || resource.path.endsWith('/driving-experiences'); }
 export function mapRow(resource: Resource, item: Row): Row {
   if (resource.kind === 'entry') return { ...item, image: item.imageUrl ?? '', description: item.body ?? '', order: item.sortOrder ?? 0 };
@@ -63,7 +70,9 @@ export async function listResource(route: string, page = 1, search = '', options
   if (resource.kind === 'entry') {
     const list = await api<Row[]>(`${resource.path}${query({ group: resource.group })}`, { signal });
     const filtered = search ? list.filter(row => String(row.title ?? '').toLowerCase().includes(search.toLowerCase())) : list;
-    if (options.sortBy) filtered.sort((a, b) => String(a[options.sortBy!] ?? '').localeCompare(String(b[options.sortBy!] ?? '')) * (options.sortDirection === 'desc' ? -1 : 1) || String(a.id).localeCompare(String(b.id)));
+    if (options.sortBy) filtered.sort((a, b) => (options.sortBy === 'sortOrder'
+      ? Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0)
+      : String(a[options.sortBy!] ?? '').localeCompare(String(b[options.sortBy!] ?? ''))) * (options.sortDirection === 'desc' ? -1 : 1) || String(a.id).localeCompare(String(b.id)));
     return { data: filtered.slice((page - 1) * 10, page * 10).map(row => mapRow(resource, row)), meta: { page, limit: 10, total: filtered.length, totalPages: Math.ceil(filtered.length / 10) } };
   }
   const result = await api<PageResult<Row>>(`${resource.path}${query({ page, limit: 10, search, group: resource.group, view: isArticleCollection(resource) ? 'table' : undefined, ...params })}`, { signal });

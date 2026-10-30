@@ -4,10 +4,10 @@ import { StatusBadge } from '@/components/ui';
 export default function SlideshowPage() {
   return <CrudPage title="Quản lý Slideshow" subtitle="Banner trang chủ · Nên dùng ảnh 1920 × 773 px (tỉ lệ 2,48:1), JPG/WebP, dưới 10 MB" columns={[
     { key: 'id', label: 'STT', width: '60px' },
-    { key: 'title', label: 'Tiêu đề', sortable: true, render: (item) => <span className="font-medium">{String(item.title)}</span> },
+    { key: 'title', label: 'Tiêu đề', sortable: true, render: (item) => <span className="admin-list-text font-medium" title={String(item.title)}>{String(item.title)}</span> },
     { key: 'image', label: 'Hình', render: (item) => item.image && item.image !== '/placeholder-banner.jpg' ? <img src={String(item.image)} alt="" className="h-10 w-16 rounded object-cover" /> : '—' },
     { key: 'sortOrder', label: 'Thứ tự', render: (item) => String(item.sortOrder ?? 0) },
-    { key: 'link', label: 'Liên kết', render: (item) => <span className="text-sm text-blue-600">{String(item.link || '—')}</span> },
+    { key: 'link', label: 'Liên kết', render: (item) => <span className="admin-list-text text-sm text-blue-600" title={String(item.link || '—')}>{String(item.link || '—')}</span> },
     { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },
   ]} formFields={[
     { name: 'title', label: 'Tiêu đề', required: true },

@@ -4,7 +4,7 @@ import { richTextPreview } from '@/lib/rich-text';
 export default function TuyenDungPage() {
   return <CrudPage title="Quản lý tuyển dụng" subtitle="Soạn bài tuyển dụng và chọn bài được hiển thị trên website" statusToggle columns={[
     { key: 'id', label: 'STT', width: '60px' },
-    { key: 'title', label: 'Tiêu đề', sortable: true, render: (item) => <span className="font-medium">{String(item.title)}</span> },
+    { key: 'title', label: 'Tiêu đề', sortable: true, render: (item) => <span className="admin-list-text font-medium" title={String(item.title)}>{String(item.title)}</span> },
     { key: 'description', label: 'Nội dung', render: item => <span className="block max-w-xs truncate text-sm text-[var(--muted-fg)]">{richTextPreview(String(item.description || ''))}</span> },
     { key: 'createdAt', label: 'Ngày tạo', sortable: true },
     { key: 'status', label: 'Hiển thị' },

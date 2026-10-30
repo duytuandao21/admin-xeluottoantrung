@@ -79,4 +79,4 @@ export function json(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: unknown
   return { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) };
 }
 
-export interface PageResult<T> { data: T[]; meta: { page: number; limit: number; total: number; totalPages: number } }
+export interface PageResult<T> { data: T[]; meta: { page: number; limit: number; total: number; totalPages: number; counts?: Record<string, number> } }

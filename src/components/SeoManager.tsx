@@ -63,7 +63,7 @@ export default function SeoManager({ initialRoute }: { initialRoute?: string }) 
       Có {rows.length} trang đã có SEO. Với xe, phụ kiện hoặc bài viết mới, thêm đường dẫn của trang để thiết lập SEO riêng.
     </div>
     <DataTable data={rows.map(row => ({ ...row, label: labelFor(row) }))} searchFields={['routePath', 'metaTitle', 'label']} searchPlaceholder="Tìm theo trang, tên xe, phụ kiện hoặc bài viết..." columns={[
-      { key: 'label', label: 'Trang', render: row => <div className="min-w-0"><strong>{row.label}</strong><p className="mt-1 break-all text-sm text-[var(--muted-fg)]">{row.routePath}</p></div> },
+      { key: 'label', label: 'Trang', render: row => <div className="min-w-0"><strong title={row.label} className="admin-list-text">{row.label}</strong><p title={row.routePath} className="admin-list-text mt-1 text-sm text-[var(--muted-fg)]">{row.routePath}</p></div> },
       { key: 'metaTitle', label: 'Tiêu đề SEO', render: row => row.metaTitle || 'Dùng tên nội dung' },
       { key: 'robotsIndex', label: 'Lập chỉ mục', render: row => row.robotsIndex ? 'Cho phép' : 'Không cho phép' },
     ]} onEdit={row => setEditor(row)} onDelete={canEdit && !deleting ? row => setRemove(row) : undefined} emptyMessage="Chưa có cấu hình SEO. Thêm đường dẫn để bắt đầu." />

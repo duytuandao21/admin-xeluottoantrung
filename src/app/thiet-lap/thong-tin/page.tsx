@@ -10,5 +10,6 @@ export default function ThongTinPage() {
     { name: 'email', label: 'Email', defaultValue: 'info@xeluottoantrung.com', placeholder: 'email@domain.com' },
     { name: 'description', label: 'Mô tả website', type: 'textarea', defaultValue: 'Chuyên mua bán xe ô tô đã qua sử dụng uy tín tại TP.HCM' },
     { name: 'keywords', label: 'Từ khóa SEO', type: 'textarea', defaultValue: 'xe lướt, xe ô tô cũ, mua bán xe, toàn trung' },
+    { name: 'anniversaryBarEnabled', section: 'Thanh kỷ niệm 4 năm', label: 'Hiển thị phía trên Header website', type: 'select', defaultValue: 'true', options: [{ value: 'true', label: 'Bật — Kỷ niệm 4 năm (2022–2026)' }, { value: 'false', label: 'Tắt — Giao diện thông thường' }], hint: 'Chọn Tắt và lưu khi kết thúc sự kiện. Tải lại trang website để xem thay đổi. Áp dụng cho mobile và desktop; cấu hình riêng với trình chiếu TV.' },
   ]} />;
 }

@@ -10,7 +10,7 @@ export default function DichVuPage() {
     statusToggle
     columns={[
       { key: 'id', label: 'STT', width: '60px' },
-      { key: 'title', label: 'Tên dịch vụ', sortable: true, render: (item) => <span className="font-medium">{String(item.title)}</span> },
+      { key: 'title', label: 'Tên dịch vụ', sortable: true, render: (item) => <span className="admin-list-text font-medium" title={String(item.title)}>{String(item.title)}</span> },
       { key: 'description', label: 'Nội dung', render: (item) => <span className="text-sm text-[var(--muted-fg)] truncate max-w-xs block">{richTextPreview(String(item.description))}</span> },
       { key: 'status', label: 'Hiển thị' },
     ]}

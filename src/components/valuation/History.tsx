@@ -27,10 +27,10 @@ export default function History({ catalog, canUpdate }: { catalog: Catalog; canU
     return () => abort.abort();
   }, [selected, reload]);
   const columns: Column<ValuationRecord>[] = [
-    { key: 'createdAt', label: 'Ngày định giá', render: row => dateTime(row.createdAt) }, { key: 'vehicleName', label: 'Xe', render: row => <span className="block max-w-64 whitespace-normal break-words">{row.vehicleName}</span> },
+    { key: 'createdAt', label: 'Ngày định giá', render: row => dateTime(row.createdAt) }, { key: 'vehicleName', label: 'Xe', render: row => <span className="admin-list-text block max-w-64 whitespace-normal break-words" title={row.vehicleName}>{row.vehicleName}</span> },
     { key: 'modelYear', label: 'Năm' }, { key: 'odometerKm', label: 'ODO', render: row => row.odometerKm === null ? 'Chưa rõ' : `${row.odometerKm.toLocaleString('vi-VN')} km` },
     { key: 'estimatedMarketValue', label: 'Giá ước lượng', render: row => money(row.estimatedMarketValue) }, { key: 'buyingMin', label: 'Khoảng thu mua', render: row => range(row.buyingMin, row.buyingMax) },
-    { key: 'confidenceScore', label: 'Dữ liệu', render: row => `${row.confidenceScore}/100` }, { key: 'contactPhone', label: 'Liên hệ', render: row => row.leadId ? <span className="whitespace-nowrap">{row.contactName?.trim() && <>{row.contactName.trim()}<br /></>}{row.contactPhone}</span> : 'Chưa để lại thông tin' },
+    { key: 'confidenceScore', label: 'Dữ liệu', render: row => `${row.confidenceScore}/100` }, { key: 'contactPhone', label: 'Liên hệ', render: row => row.leadId ? <span className="whitespace-nowrap">{row.contactName?.trim() && <span className="admin-list-text" title={row.contactName.trim()}>{row.contactName.trim()}</span>}{row.contactPhone}</span> : 'Chưa để lại thông tin' },
     { key: 'leadStatus', label: 'Xử lý', render: row => row.leadId && row.leadStatus ? leadStatusLabels[row.leadStatus] : 'Chưa có lead' }, { key: 'resultStatus', label: 'Kết quả', render: row => resultLabels[row.resultStatus] || row.resultStatus },
   ];
   const filterField = (key: keyof typeof blankFilters, label: string, type: string) => <Field label={label}><Input aria-label={label} type={type} value={draft[key]} min={type === 'number' ? 0 : undefined} step={type === 'number' ? 1 : undefined} onChange={event => setDraft(old => ({ ...old, [key]: event.target.value }))} /></Field>;

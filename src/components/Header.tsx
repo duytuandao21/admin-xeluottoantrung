@@ -17,7 +17,7 @@ export default function Header() {
   const router = useRouter();
   const { identity, logout } = useAuth();
   const profile = { name: identity?.profile.fullName || 'Quản trị viên' };
-  const [counts, setCounts] = useState({ sell: 0, trade_in: 0, callback: 0 });
+  const [counts, setCounts] = useState({ sell: 0, trade_in: 0, callback: 0, newsletter: 0 });
   useEffect(() => {
     let controller: AbortController | undefined;
     const loadCounts = () => {
@@ -26,8 +26,12 @@ export default function Header() {
         .then(next => { if (!current.signal.aborted) setCounts(next); }).catch(() => {});
     };
     loadCounts();
+    const interval = window.setInterval(() => { if (document.visibilityState === 'visible') loadCounts(); }, 30_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') loadCounts(); };
     window.addEventListener('admin-leads-change', loadCounts);
-    return () => { controller?.abort(); window.removeEventListener('admin-leads-change', loadCounts); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { controller?.abort(); window.clearInterval(interval); window.removeEventListener('admin-leads-change', loadCounts);
+      document.removeEventListener('visibilitychange', onVisible); };
   }, []);
   const notifRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -57,7 +61,7 @@ export default function Header() {
     { label: 'Thư bán xe', count: counts.sell, href: '/thu/ban-xe' },
     { label: 'Thư lên đời xe', count: counts.trade_in, href: '/thu/len-doi-xe' },
     { label: 'Yêu cầu gọi lại', count: counts.callback, href: '/thu/yeu-cau-goi-lai' },
-    { label: 'Đăng ký nhận tin', count: 0, href: '/thu/dang-ky-nhan-tin' },
+    { label: 'Đăng ký nhận tin', count: counts.newsletter, href: '/thu/dang-ky-nhan-tin' },
   ];
   const unreadCount = notifications.reduce((sum, notification) => sum + notification.count, 0);
   const searchPages = menuItems.flatMap(item => item.href ? [{ label: item.label, href: item.href }] : (item.children || []).flatMap(child => child.href ? [{ label: child.label, href: child.href }] : []));
@@ -97,7 +101,7 @@ export default function Header() {
           {/* Notifications */}
           <div className="relative" ref={notifRef}>
             <button
-              onClick={() => { setShowNotif(!showNotif); setShowSettings(false); }}
+              onClick={() => { if (!showNotif) window.dispatchEvent(new Event('admin-leads-change')); setShowNotif(!showNotif); setShowSettings(false); }}
               className="p-2 rounded-lg hover:bg-[var(--muted)] transition-colors relative"
             >
               <Bell className="w-5 h-5 text-[var(--muted-fg)]" />
@@ -172,7 +176,7 @@ export default function Header() {
               <p className="px-3 py-2 text-xs font-semibold text-[var(--muted-fg)] uppercase">{search ? 'Kết quả tìm kiếm' : 'Trang phổ biến'}</p>
               {searchResults.map((item, i) => (
                 <Link key={i} href={item.href} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[var(--muted)] transition-colors text-sm" onClick={() => { setSearchOpen(false); setSearch(''); }}>
-                  <span>{item.label}</span>
+                  <span className="min-w-0 flex-1 truncate" title={item.label}>{item.label}</span>
                 </Link>
               ))}
               {searchResults.length === 0 && <p className="px-3 py-2 text-sm text-[var(--muted-fg)]">Không tìm thấy trang phù hợp.</p>}

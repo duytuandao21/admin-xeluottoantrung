@@ -133,12 +133,13 @@ export interface DataTableProps<T = Record<string, unknown>> {
   searchFields?: string[];
   actions?: (item: T) => ReactNode;
   stickyActions?: boolean;
+  selection?: { selected: Set<string>; onChange: (ids: Set<string>) => void };
   emptyMessage?: string;
   remote?: { page: number; total: number; perPage: number; search: string; onPage: (page: number) => void; onSearch: (search: string) => void; sortBy?: string; sortDirection?: 'asc' | 'desc'; onSort?: (key: string, direction: 'asc' | 'desc') => void };
 }
 
 export function DataTable<T extends Record<string, unknown> = Record<string, unknown>>({
-  columns, data, onEdit, onDelete, onView, searchPlaceholder, searchFields, actions, stickyActions = false, emptyMessage, remote
+  columns, data, onEdit, onDelete, onView, searchPlaceholder, searchFields, actions, stickyActions = false, emptyMessage, remote, selection
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState('');
@@ -168,12 +169,24 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
   const totalPages = Math.ceil((remote?.total ?? filtered.length) / perPage);
   const currentPage = Math.min(remote?.page ?? page, Math.max(totalPages, 1));
   const paginated = remote ? filtered : filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const visibleIds = paginated.map(item => String(item.id));
+  const allSelected = visibleIds.length > 0 && visibleIds.every(id => selection?.selected.has(id));
   const goPage = (next: number) => remote ? remote.onPage(next) : setPage(next);
 
   const handleSort = (key: string) => {
     if (remote?.onSort) { remote.onSort(key, remote.sortBy === key && remote.sortDirection !== 'desc' ? 'desc' : 'asc'); return; }
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  const cellContent = (col: Column<T>, item: T, index: number) => {
+    const content = col.label === 'STT' ? (currentPage - 1) * perPage + index + 1
+      : col.render ? col.render(item)
+      : ['createdAt', 'updatedAt', 'deadline', 'lastLogin'].includes(col.key)
+        ? formatDate(String(item[col.key] ?? '')) : String(item[col.key] ?? '');
+    return typeof content === 'string'
+      ? <span className="admin-list-text" title={content}>{content}</span>
+      : content;
   };
 
   return (
@@ -197,6 +210,11 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
         <table className="w-full min-w-max data-table">
           <thead>
             <tr className="border-b border-[var(--border-color)]">
+              {selection && <th className="w-11 px-3 py-3.5"><input type="checkbox" className="h-4 w-4 cursor-pointer accent-red-600" aria-label="Chọn tất cả trên trang" checked={allSelected} onChange={event => {
+                const next = new Set(selection.selected);
+                visibleIds.forEach(id => { if (event.target.checked) next.add(id); else next.delete(id); });
+                selection.onChange(next);
+              }} /></th>}
               {columns.map(col => (
                 <th key={col.key} className="whitespace-nowrap px-3 py-3.5 text-left text-sm font-semibold text-[var(--muted-fg)] uppercase tracking-wide" style={col.width ? { width: col.width } : {}}>
                   {col.sortable && col.label !== 'STT' ? (
@@ -215,16 +233,21 @@ export function DataTable<T extends Record<string, unknown> = Record<string, unk
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + 1} className="px-4 py-12 text-center text-sm text-[var(--muted-fg)]">
+                <td colSpan={columns.length + 1 + (selection ? 1 : 0)} className="px-4 py-12 text-center text-sm text-[var(--muted-fg)]">
                   {emptyMessage || 'Không có dữ liệu'}
                 </td>
               </tr>
             ) : (
               paginated.map((item, i) => (
-                <tr key={i} className="group border-b border-[var(--border-color)] last:border-0">
+                <tr key={String(item.id ?? i)} className="group border-b border-[var(--border-color)] last:border-0">
+                  {selection && <td className="px-3 py-3.5"><input type="checkbox" className="h-4 w-4 cursor-pointer accent-red-600" aria-label={`Chọn dòng ${String(item.id)}`} checked={selection.selected.has(String(item.id))} onChange={event => {
+                    const next = new Set(selection.selected);
+                    if (event.target.checked) next.add(String(item.id)); else next.delete(String(item.id));
+                    selection.onChange(next);
+                  }} /></td>}
                   {columns.map(col => (
                     <td key={col.key} className="whitespace-nowrap px-3 py-3.5 text-[15px]">
-                      {col.label === 'STT' ? (currentPage - 1) * perPage + i + 1 : col.render ? col.render(item) : ['createdAt', 'updatedAt', 'deadline', 'lastLogin'].includes(col.key) ? formatDate(String(item[col.key] ?? '')) : String(item[col.key] ?? '')}
+                      {cellContent(col, item, i)}
                     </td>
                   ))}
                   {(onEdit || onDelete || onView || actions) && (
@@ -302,7 +325,7 @@ export function Textarea({ ...props }: React.TextareaHTMLAttributes<HTMLTextArea
 export function Select({ children, className, ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { children: ReactNode }) {
   return (
     <div className={`relative min-w-0 w-full ${className || ''}`}>
-      <select {...props} className="w-full appearance-none rounded-xl border border-[var(--border-color)] bg-[var(--input-bg)] py-3 pl-4 pr-11 text-base transition-colors disabled:cursor-not-allowed disabled:opacity-60">
+      <select {...props} className="min-w-0 max-w-full w-full truncate appearance-none rounded-xl border border-[var(--border-color)] bg-[var(--input-bg)] py-3 pl-4 pr-11 text-base transition-colors disabled:cursor-not-allowed disabled:opacity-60">
         {children}
       </select>
       {!props.multiple && <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-fg)]" />}

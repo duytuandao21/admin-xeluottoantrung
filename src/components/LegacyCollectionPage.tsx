@@ -30,9 +30,9 @@ export default function LegacyCollectionPage() {
   if (!config) return null;
   const hasImage = config.kind === 'image' || config.kind === 'link';
   const columns = [
-    { key: 'order', label: pathname === '/thiet-lap/quy-trinh-ban-xe' ? 'Thứ tự' : 'STT', sortable: true, width: '70px' },
+    { key: pathname === '/thiet-lap/quy-trinh-ban-xe' ? 'sortOrder' : 'order', label: pathname === '/thiet-lap/quy-trinh-ban-xe' ? 'Thứ tự' : 'STT', sortable: pathname === '/thiet-lap/quy-trinh-ban-xe', width: '70px' },
     ...(hasImage ? [{ key: 'image', label: 'Hình', render: (item: Record<string, unknown>) => item.image ? <img src={String(item.image)} alt="" className="h-10 w-16 rounded object-cover" /> : <span className="text-[var(--muted-fg)]">—</span> }] : []),
-    { key: 'title', label: 'Tiêu đề', sortable: true, render: (item: Record<string, unknown>) => <span className="font-medium">{String(item.title)}</span> },
+    { key: 'title', label: 'Tiêu đề', sortable: true, render: (item: Record<string, unknown>) => <span className="admin-list-text font-medium" title={String(item.title)}>{String(item.title)}</span> },
     ...(config.kind === 'link' ? [{ key: 'link', label: 'Link' }] : []),
     ...(config.kind === 'color' ? [{ key: 'colorCode', label: 'Mã màu', render: (item: Record<string, unknown>) => { const code = resolveCarColorCode(item.colorCode, String(item.title)); return <span className="inline-flex items-center gap-3"><span className="h-11 w-16 rounded-lg border border-[var(--border-color)] shadow-sm" style={{ backgroundColor: code }} /><strong className="font-mono text-sm tracking-wide">{code}</strong></span>; } }] : []),
     ...(pathname === '/thiet-lap/nut-goi' ? [{ key: 'phone', label: 'Số điện thoại', render: (item: Record<string, unknown>) => item.phone ? <a href={`tel:${String(item.phone)}`} className="font-medium text-red-600 hover:underline">{String(item.phone)}</a> : <span className="text-[var(--muted-fg)]">Chưa cập nhật</span> }] : []),

@@ -115,7 +115,7 @@ export default function VersionsPage() {
 
   const columns: Column<Record<string, unknown>>[] = [
     { key: 'id', label: 'STT', width: '60px' },
-    { key: 'name', label: 'Phiên bản', sortable: true, render: item => <div className="flex items-center gap-3"><CategoryThumbnail src={String(item.image || '')} kind="model" /><span className="font-semibold">{String(item.name)}</span></div> },
+    { key: 'name', label: 'Phiên bản', sortable: true, render: item => <div className="flex items-center gap-3"><CategoryThumbnail src={String(item.image || '')} kind="model" /><span className="admin-list-text font-semibold" title={String(item.name)}>{String(item.name)}</span></div> },
     { key: 'brand', label: 'Hãng xe', render: item => { const model = models.find(candidate => String(candidate.id) === String(item.parentId)); return brands.find(candidate => String(candidate.id) === String(model?.parentId))?.name || '—'; } },
     { key: 'model', label: 'Dòng xe', render: item => models.find(candidate => String(candidate.id) === String(item.parentId))?.name || '—' },
     { key: 'slug', label: 'Slug' },

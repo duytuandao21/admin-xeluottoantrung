@@ -162,7 +162,7 @@ export default function TVDisplayPage() {
               hotlines: !event.target.checked && !config.hotlines.length ? sales.map(row => ({ ...row })) : config.hotlines })} className="mt-1 h-4 w-4 accent-red-600"/>
             <span><span className="font-medium">Đồng bộ số tư vấn bán hàng từ Nút gọi</span><span className={`mt-1 block ${muted}`}>Chỉ lấy liên hệ đang hoạt động có mô tả “Tư vấn bán hàng”. Tắt để dùng danh sách riêng cho TV.</span></span>
           </label>
-          {config.syncSalesContacts ? <div className="grid gap-3 md:grid-cols-2">{sales.map(row => <div key={row.phone} className="flex flex-wrap justify-between gap-2 rounded-xl border border-[var(--border-color)] p-4"><span>{row.name}</span><strong className="text-red-600">{row.phone}</strong></div>)}
+          {config.syncSalesContacts ? <div className="grid gap-3 md:grid-cols-2">{sales.map(row => <div key={row.phone} className="flex flex-wrap justify-between gap-2 rounded-xl border border-[var(--border-color)] p-4"><span title={row.name} className="admin-list-text">{row.name}</span><strong className="text-red-600">{row.phone}</strong></div>)}
             {!sales.length && <p className={muted}>Chưa có số tư vấn bán hàng hợp lệ. TV tạm dùng hotline chung của website.</p>}</div> : <div className="space-y-3">
             {config.hotlines.map((row, index) => <div key={index} className="grid items-end gap-3 rounded-xl border border-[var(--border-color)] p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
               <div className="space-y-2"><label htmlFor={`tv-name-${index}`} className="text-sm font-semibold">Tên liên hệ {index + 1}</label><Input id={`tv-name-${index}`} maxLength={80} value={row.name} onChange={event => contact(index, { name: event.target.value })}/></div>

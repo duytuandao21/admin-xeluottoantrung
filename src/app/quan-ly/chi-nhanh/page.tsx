@@ -30,8 +30,8 @@ export default function ChiNhanhPage() {
       columns={[
         { key: 'regionId', label: 'Danh mục chi nhánh', render: (item) => regions.find(region => region.id === item.regionId)?.name || 'Chưa phân vùng' },
         { key: 'id', label: 'STT', width: '60px' },
-        { key: 'name', label: 'Tên chi nhánh', sortable: true, render: (item) => <span className="font-medium">{String(item.name)}</span> },
-        { key: 'address', label: 'Địa chỉ', render: (item) => <span className="text-sm text-[var(--muted-fg)]">{String(item.address)}</span> },
+        { key: 'name', label: 'Tên chi nhánh', sortable: true, render: (item) => <span className="admin-list-text font-medium" title={String(item.name)}>{String(item.name)}</span> },
+        { key: 'address', label: 'Địa chỉ', render: (item) => <span className="admin-list-text text-sm text-[var(--muted-fg)]" title={String(item.address)}>{String(item.address)}</span> },
         { key: 'phone', label: 'Điện thoại' },
         { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },
       ]}

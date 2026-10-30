@@ -4,7 +4,7 @@ import { StatusBadge } from '@/components/ui';
 export default function NamSanXuatPage() {
   return <CrudPage title="Quản lý năm sản xuất" columns={[
     { key: 'id', label: 'STT', width: '60px' },
-    { key: 'name', label: 'Năm sản xuất', sortable: true, render: (item) => <span className="font-semibold">{String(item.name)}</span> },
+    { key: 'name', label: 'Năm sản xuất', sortable: true, render: (item) => <span className="admin-list-text font-semibold" title={String(item.name)}>{String(item.name)}</span> },
     { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },
   ]} formFields={[
     { name: 'name', label: 'Năm sản xuất', required: true, placeholder: 'VD: 2024' },

@@ -16,8 +16,8 @@ export default function Category2Page() {
       subtitle="Quản lý dòng xe"
       columns={[
         { key: 'id', label: 'STT', width: '60px', sortable: true },
-        { key: 'name', label: 'Tên dòng xe', sortable: true, render: (item) => <div className="flex items-center gap-3"><CategoryThumbnail src={String(item.image || '')} kind="model" /><span className="font-semibold">{String(item.name)}</span></div> },
-        { key: 'parentId', label: 'Hãng xe', render: (item) => { const parent = categories.find(c => String(c.id) === String(item.parentId)); return <span className="text-[var(--muted-fg)]">{parent?.name || '—'}</span>; } },
+        { key: 'name', label: 'Tên dòng xe', sortable: true, render: (item) => <div className="flex items-center gap-3"><CategoryThumbnail src={String(item.image || '')} kind="model" /><span className="admin-list-text font-semibold" title={String(item.name)}>{String(item.name)}</span></div> },
+        { key: 'parentId', label: 'Hãng xe', render: (item) => { const parent = categories.find(c => String(c.id) === String(item.parentId)); return <span className="admin-list-text text-[var(--muted-fg)]" title={parent?.name || '—'}>{parent?.name || '—'}</span>; } },
         { key: 'bodyStyleId', label: 'Kiểu dáng', render: (item) => bodyStyles.find(style => String(style.id) === String(item.bodyStyleId))?.name || 'Chưa chọn' },
         { key: 'slug', label: 'Slug' },
         { key: 'count', label: 'Số xe', render: (item) => <span className="font-semibold text-red-600">{Number(item.count ?? 0).toLocaleString('vi-VN')}</span> },

@@ -48,7 +48,7 @@ export default function Profiles({ policy, writable, revision, onDirtyChange }: 
         <p className="tt-ownership-hint">Xe dùng định mức phù hợp có ưu tiên cao nhất. Mỗi định mức bao gồm đầy đủ các quy tắc chi phí.</p>
       </Panel>
       <LoadState {...rows} />{rows.data && <DataTable data={rows.data.data.map(row => ({ ...row }))} remote={{ page, total: rows.data.meta.total, perPage: 20, search, onPage: setPage, onSearch: value => { setSearch(value); setPage(1); } }} searchPlaceholder="Tìm tên định mức…" columns={[
-        { key: 'name', label: 'Định mức', render: row => <div><strong>{row.name}</strong><p className="tt-ownership-cell-note">Xăng {row.policy.consumption.gasoline} · Dầu {row.policy.consumption.diesel} · Điện {row.policy.consumption.electric} /100 km</p></div> },
+        { key: 'name', label: 'Định mức', render: row => <div><strong title={row.name} className="admin-list-text">{row.name}</strong><p className="tt-ownership-cell-note">Xăng {row.policy.consumption.gasoline} · Dầu {row.policy.consumption.diesel} · Điện {row.policy.consumption.electric} /100 km</p></div> },
         { key: 'scope', label: 'Phạm vi', render: row => <span className="tt-ownership-scope-badge">{labels[row.scope]}</span> },
         { key: 'maintenance', label: 'Bảo dưỡng', render: row => row.policy.maintenanceMode === 'scheduled' ? `${row.policy.maintenance.length} hạng mục định kỳ` : 'Ngân sách theo km / năm' },
         { key: 'updatedAt', label: 'Cập nhật', render: row => row.updatedAt ? new Date(row.updatedAt).toLocaleString('vi-VN') : '—' },

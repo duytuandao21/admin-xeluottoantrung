@@ -4,7 +4,7 @@ import { StatusBadge } from '@/components/ui';
 export default function Page() {
   return <CrudPage title="Quản lý biển số" columns={[
     { key: 'id', label: 'STT', width: '60px' },
-    { key: 'name', label: 'Loại biển số', sortable: true, render: (item) => <span className="font-medium">{String(item.name)}</span> },
+    { key: 'name', label: 'Loại biển số', sortable: true, render: (item) => <span className="admin-list-text font-medium" title={String(item.name)}>{String(item.name)}</span> },
     { key: 'slug', label: 'Slug' },
     { key: 'status', label: 'Trạng thái', render: (item) => <StatusBadge status={String(item.status)} /> },
   ]} formFields={[

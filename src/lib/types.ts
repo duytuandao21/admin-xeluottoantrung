@@ -43,7 +43,7 @@ export interface Category {
 }
 
 export interface Mail {
-  id: number;
+  id: string | number;
   name: string;
   phone: string;
   email?: string;
@@ -52,7 +52,8 @@ export interface Mail {
   carName?: string;
   currentCar?: string;
   desiredCar?: string;
-  status: 'unread' | 'read' | 'replied';
+  status: 'unread' | 'read' | 'replied' | 'active' | 'inactive';
+  viewedAt?: string | null;
   createdAt: string;
 }
 

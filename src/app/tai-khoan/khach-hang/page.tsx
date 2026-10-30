@@ -8,10 +8,10 @@ export default function KhachHangPage() {
     { key: 'name', label: 'Họ tên', sortable: true, render: (item) => (
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">{String(item.name).charAt(0)}</div>
-        <span className="font-medium">{String(item.name)}</span>
+        <span className="admin-list-text font-medium" title={String(item.name)}>{String(item.name)}</span>
       </div>
     )},
-    { key: 'email', label: 'Email', render: (item) => <span className="text-sm text-[var(--muted-fg)]">{String(item.email)}</span> },
+    { key: 'email', label: 'Email', render: (item) => <span className="admin-list-text text-sm text-[var(--muted-fg)]" title={String(item.email)}>{String(item.email)}</span> },
     { key: 'phone', label: 'SĐT' },
     { key: 'createdAt', label: 'Ngày tạo', sortable: true },
     { key: 'lastLogin', label: 'Đăng nhập cuối', render: (item) => <span className="text-sm text-[var(--muted-fg)]">{item.lastLogin ? formatDate(String(item.lastLogin)) : 'Chưa đăng nhập'}</span> },
