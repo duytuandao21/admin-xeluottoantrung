@@ -1,6 +1,8 @@
 import { api, json } from './client';
 import { readUploadImageDimensions } from './image-dimensions';
 
+export const MAX_CAR_IMAGES = 25;
+
 interface Presigned { storageKey: string; uploadUrl: string; headers: Record<string, string>; publicUrl: string }
 const imageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/vnd.microsoft.icon', 'image/x-icon'];
 function validate(file: File) {

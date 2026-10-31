@@ -7,7 +7,7 @@ import { slugify } from '@/lib/slug';
 import { api, ApiError, catalogueRows, json } from '@/lib/api/client';
 import { useAdminList, useWriteAction } from '@/lib/api/use-admin-list';
 import { carDetail, carToProduct, deleteCar, listCars, saveCar, setCarPublished } from '@/lib/api/cars';
-import { uploadCarImage } from '@/lib/api/media';
+import { MAX_CAR_IMAGES, uploadCarImage } from '@/lib/api/media';
 import { Plus, Download, Car, Star, CreditCard, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Product, Category, CarAttribute, GearBox, Branch } from '@/lib/types';
@@ -254,7 +254,7 @@ export default function ProductsPage() {
     const images = [...(!form.has('cover__remove') && currentImages[0] ? [currentImages[0]] : []), ...remainingGallery];
     try {
       const gallery = form.getAll('gallery').filter((entry): entry is File => entry instanceof File && entry.size > 0);
-      if (images.length + gallery.length + (coverFile instanceof File && coverFile.size ? 1 : 0) > 10) throw new Error('Mỗi xe chỉ được có tối đa 10 ảnh.');
+      if (images.length + gallery.length + (coverFile instanceof File && coverFile.size ? 1 : 0) > MAX_CAR_IMAGES) throw new Error(`Mỗi xe chỉ được có tối đa ${MAX_CAR_IMAGES} ảnh.`);
       const newFiles = [...gallery, ...(coverFile instanceof File && coverFile.size ? [coverFile] : [])];
       if (newFiles.some(file => file.size > 10_000_000 || !['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.type)))
         throw new Error('Ảnh xe phải là JPEG, PNG, WebP hoặc AVIF và nhỏ hơn 10 MB.');
@@ -456,7 +456,7 @@ export default function ProductsPage() {
             <FormField label="Tình trạng xe"><Select name="condition" defaultValue={formData.condition || 'Đã qua sử dụng'}><option>Đã qua sử dụng</option><option>Xe mới</option></Select></FormField>
             <FormField label="Trạng thái"><Select name="status" defaultValue={formData.status || 'active'}><option value="active">Đang bán</option><option value="deposit">Đã nhận cọc</option><option value="sold">Đã bán</option><option value="inactive">Ẩn</option></Select></FormField>
           </div>
-          <div className="border-t border-[var(--border-color)] pt-7"><h2 className="mb-5 text-xl font-semibold">Hình ảnh xe</h2><div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><FormField label="Ảnh đại diện"><ImageUpload name="cover" existing={formData.images?.[0] !== '/placeholder-car.jpg' ? formData.images?.[0] : undefined} /></FormField><FormField label="Thư viện ảnh"><ImageUpload name="gallery" multiple maxFiles={10} existing={formData.images?.slice(1).filter(image => image !== '/placeholder-car.jpg')} hint="Tối đa 10 ảnh cho mỗi xe, tính cả ảnh đại diện." /></FormField></div></div>
+          <div className="border-t border-[var(--border-color)] pt-7"><h2 className="mb-5 text-xl font-semibold">Hình ảnh xe</h2><div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><FormField label="Ảnh đại diện"><ImageUpload name="cover" existing={formData.images?.[0] !== '/placeholder-car.jpg' ? formData.images?.[0] : undefined} /></FormField><FormField label="Thư viện ảnh"><ImageUpload name="gallery" multiple maxFiles={MAX_CAR_IMAGES} existing={formData.images?.slice(1).filter(image => image !== '/placeholder-car.jpg')} hint={`Tối đa ${MAX_CAR_IMAGES} ảnh cho mỗi xe, tính cả ảnh đại diện.`} /></FormField></div></div>
           <div className="border-t border-[var(--border-color)] pt-7">
             <h2 className="mb-5 text-xl font-semibold">Nhãn hiển thị</h2>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
